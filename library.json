@@ -1,0 +1,30 @@
+{
+    "name": "mpbToSwitch",
+    "version": "2.1.0",
+    
+    "description": "Add any kind of switch to a project by using simple momentary push buttons and this library to simulate the internal mechanism of each of them, starting from a Debounced Push Button and extending to Delayed Start Push Button, Toggle (Latched) Push Button, Time Latched Push Button, External Release Latched Push Button." ,
+    "keywords": "momentary, push, button, debounce, switch, latch, toggle, release, warning, security, staircase, timer",
+    
+    "repository":
+    {
+      "type": "git",
+      "url": "https://github.com/GabyGold67/MomentaryPushButtonsAsSwitches"
+    },
+    "authors":
+    [
+      {
+        "name": "Gabriel D. Goldman",
+        "email": "gdgoldman67@hotmail.com",
+        "url": "https://github.com/GabyGold67",
+        "maintainer": true
+      }
+    ],
+
+    "license": "GPL-3.0-or-later",
+    "homepage": "https://www.gnu.org/licenses/gpl-3.0-standalone.html",
+    "dependencies":
+    [
+    ] ,
+    "frameworks": "Arduino",
+    "platforms": "espressif32"
+  }
