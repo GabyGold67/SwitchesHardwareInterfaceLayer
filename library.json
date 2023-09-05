@@ -1,14 +1,14 @@
 {
-    "name": "mpbToSwitch",
-    "version": "2.1.0",
+    "name": "switchHIL",
+    "version": "1.0.0",
     
-    "description": "Add any kind of switch to a project by using simple momentary push buttons and this library to simulate the internal mechanism of each of them, starting from a Debounced Push Button and extending to Delayed Start Push Button, Toggle (Latched) Push Button, Time Latched Push Button, External Release Latched Push Button." ,
+    "description": "An Arduino-Esp32 library that implements the output hardware interface layer for the logic switch objects created by using the Momentary Buttons as Switches (mpbToSwitch) library." ,
     "keywords": "momentary, push, button, debounce, switch, latch, toggle, release, warning, security, staircase, timer",
     
     "repository":
     {
       "type": "git",
-      "url": "https://github.com/GabyGold67/MomentaryPushButtonsAsSwitches"
+      "url": "https://github.com/GabyGold67/SwitchesHardwareInterfaceLayer"
     },
     "authors":
     [

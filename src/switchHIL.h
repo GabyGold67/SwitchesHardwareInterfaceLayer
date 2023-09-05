@@ -56,7 +56,7 @@ public:
     static uint8_t stSwtchCount;
 };
 
-//=============================================================>>
+//=============================================================>
 
 class DbncdDlydSwitch: public HILSwitches{
   static TaskHandle_t ddSwtchTskHndl;  //TaskHandle to the updating task that keeps this class objects outputs updated
