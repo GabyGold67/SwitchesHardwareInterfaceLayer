@@ -11,12 +11,13 @@
   Updated by Gabriel D. Goldman, August 28, 2023.
   Released into the public domain in accordance with "GPL-3.0-or-later" license terms.
 
-  Example file to demonstrate DbncdMPBttn and TmLtchMPBttn classes, required hardware and connections:
-  _ 1 push button between GND and dbncdSwitchPin
-  _ 1 push button between GND and tlmpbSwitchPin
-  _ 1 led with it's corresponding resistor between GND and dbncdLoad
-  _ 1 led with it's corresponding resistor between GND and tlmpLoadPin
-  _ 1 led with it's corresponding resistor between GND and tlmpbPilotPin
+  Example file to demonstrate DbncdDlydSwitch and StrcsTmrSwitch classes, required hardware and connections:
+  _ 1 push button between GND and dmpbSwitchPin
+  _ 1 push button between GND and htlmpbSwitchPin
+  _ 1 led with it's corresponding resistor between GND and dmpbLoadPin
+  _ 1 led with it's corresponding resistor between GND and htlmpbLoadPin
+  _ 1 led with it's corresponding resistor between GND and htlmpbWnngPin
+  _ 1 led with it's corresponding resistor between GND and htlmpbPilotPin
 */
 
 // put function declarations here:
@@ -38,6 +39,7 @@ DbncdDlydSwitch myDbncDlydSwitch(ddBttn, dmpbLoadPin);
 
 void setup() {
   // put your setup code here, to run once:
+  //Change some of the HntdTmLtchMPBttn attributes to show how simple it is
   myStairSwitch.getUnderlMPB()->setKeepPilot(true);
   myStairSwitch.getUnderlMPB()->setActTime(6000);
   myStairSwitch.setBlnkRate(300);

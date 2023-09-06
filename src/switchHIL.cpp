@@ -10,22 +10,25 @@ TaskHandle_t DbncdDlydSwitch::ddSwtchTskHndl = nullptr;
 DbncdDlydSwitch* ddSwtchsInstances[MAX_SWITCHES];
 
 void stSwtchsTskCallback(void* argp){
-  //HILSwitches *mySwtch = (HILSwitches*)argp;  //Parameter casting: the parameter passed by the task is casted to its real type
+  //StrcsTmrSwitch *mySwtch = (StrcsTmrSwitch*)argp;  //Parameter casting: the parameter passed by the task is casted to its real type
 
   for (;;){
     for(int i{0}; i < StrcsTmrSwitch::stSwtchCount; i++){
-       stSwtchsInstances[0]->updOutputs();
+       stSwtchsInstances[i]->updOutputs();
     }
+    vTaskDelay(10/portTICK_PERIOD_MS);  //There's no need to refresh the outputs so frequently, and failing to let lower priorities tasks includes the idle(), so the Watchdog will reset the mcu
   }
 }
 
 void ddSwtchsTskCallback(void* argp){
-  //HILSwitches *mySwtch = (HILSwitches*)argp;  //Parameter casting: the parameter passed by the task is casted to its real type
+  //DbncdDlydSwitch *mySwtch = (DbncdDlydSwitch*)argp;  //Parameter casting: the parameter passed by the task is casted to its real type
 
   for (;;){
     for(int i{0}; i < DbncdDlydSwitch::ddSwtchCount; i++){
-       ddSwtchsInstances[0]->updOutputs();
+       ddSwtchsInstances[i]->updOutputs();
     }
+    vTaskDelay(10/portTICK_PERIOD_MS);  //There's no need to refresh the outputs so frequently, and failing to let lower priorities tasks includes the idle(), so the Watchdog will reset the mcu
+
   }
 }
 
@@ -63,14 +66,14 @@ StrcsTmrSwitch::StrcsTmrSwitch(HntdTmLtchMPBttn &lgcMPB, uint8_t loadPin, uint8_
         rc = xTaskCreatePinnedToCore(
         stSwtchsTskCallback,  //function to be called
         "UpdStSwtchOutputs",  //Name of the task
-        2048,   //Stack size (in bytes in ESP32, words in FreeRTOS), the minimum value is in the config file, for this is 768 bytes
+        1716,   //Stack size (in bytes in ESP32, words in FreeRTOS), the minimum value is in the config file, for this is 768 bytes, this gives a size of 1.5 KB
         &stSwtchsInstances,  //Pointer to the parameters for the function to work with
         _exePrty,      //Priority level given to the task
         &stSwtchTskHndl, //Task handle
         app_cpu //Run in the App Core if it's a dual core mcu (ESP-FreeRTOS specific)
         );
-        //assert(rc == pdPASS);
-        //assert(stSwtchTskHndl);
+        assert(rc == pdPASS);
+        assert(stSwtchTskHndl);
     }
     
     //Add a pointer to the switch instantiated to the array of pointers of switches whose outputs must be updated
@@ -226,14 +229,14 @@ DbncdDlydSwitch::DbncdDlydSwitch(DbncdDlydMPBttn &lgcMPB, uint8_t loadPin)
         rc = xTaskCreatePinnedToCore(
         ddSwtchsTskCallback,  //function to be called
         "UpdDdSwtchOutputs",  //Name of the task
-        2048,   //Stack size (in bytes in ESP32, words in FreeRTOS), the minimum value is in the config file, for this is 768 bytes
+        1716,   //Stack size (in bytes in ESP32, words in FreeRTOS), the minimum value is in the config file, for this is 768 bytes
         &ddSwtchsInstances,  //Pointer to the parameters for the function to work with
-        _exePrty,      //Priority level given to the task
+       _exePrty,      //Priority level given to the task
         &ddSwtchTskHndl, //Task handle
         app_cpu //Run in the App Core if it's a dual core mcu (ESP-FreeRTOS specific)
         );
-        //assert(rc == pdPASS);
-        //assert(stSwtchTskHndl);
+        assert(rc == pdPASS);
+        assert(ddSwtchTskHndl);
     }
     
     //Add a pointer to the switch instantiated to the array of pointers of switches whose outputs must be updated

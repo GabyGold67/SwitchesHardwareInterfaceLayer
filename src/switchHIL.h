@@ -9,14 +9,14 @@
 
 //Function prototypes
 
-//Global variables needed for this file (declaring them at the end of file produces "was not declared in this scope" errors)
+//Global variables
 static uint8_t totalSwitchesCount = 0; //Counter of all instantiated HILSwitches objects
-static uint8_t _exePrty {1};   //Execution priority of the updating Task
-static int app_cpu = xPortGetCoreID();
+static const uint8_t _exePrty = 1;   //Execution priority of the updating Task
+static const int app_cpu = xPortGetCoreID();
 static BaseType_t rc;
 
 //Classes definitions
-class HILSwitches{  //Virtual class used as superclass of all the switches, one of the solutions to manage several switch subclasses through it
+class HILSwitches{  //Virtual class used as superclass of all the switches
 
 protected:
       uint8_t _loadPin{};
