@@ -265,3 +265,39 @@ DbncdDlydMPBttn* DbncdDlydSwitch::getUnderlMPB(){
     
     return _underlMPB;
 }
+
+//=========================================================================> Class methods delimiter
+
+HntdTmVdblScrtySwitch::HntdTmVdblScrtySwitch(TmVdblMPBttn &lgcMPB, uint8_t loadPin, uint8_t pressOkPin, uint8_t voidedPin, uint8_t disabledPin)
+:_underlMPB{&lgcMPB}, _loadPin{loadPin}, _pressOkPin{pressOkPin}, _voidedPin{voidedPin}, _disabledPin{disabledPin}
+{
+}
+
+bool HntdTmVdblScrtySwitch::updOutputs(){
+    return false;
+}
+
+bool HntdTmVdblScrtySwitch::setEnabled(bool newEnable)
+{
+    if (_enabled != newEnable)
+        _enabled = newEnable;
+    
+    return _enabled;
+}
+
+bool HntdTmVdblScrtySwitch::setOnIfDisabled(bool newIsOn){
+    if (_onIfDisabled != newIsOn)
+        _onIfDisabled = newIsOn;
+
+    return _onIfDisabled;
+}
+
+bool HntdTmVdblScrtySwitch::enable(){
+    
+    return setEnabled(true);
+}
+
+bool HntdTmVdblScrtySwitch::disable(){
+    
+    return setEnabled(false);
+}

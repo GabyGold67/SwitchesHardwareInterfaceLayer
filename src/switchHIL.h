@@ -27,37 +27,6 @@ public:
 
 //=============================================================>
 
-class StrcsTmrSwitch: public HILSwitches{
-  static TaskHandle_t stSwtchTskHndl;  //TaskHandle to the updating task that keeps this class objects outputs updated
-protected:
-    HntdTmLtchMPBttn* _underlMPB;
-    uint8_t _loadPin{};
-    uint8_t _wrnngPin{};
-    uint8_t _pltPin{};
-
-    bool _actvWrnng{false};
-    bool _actvPlt {false};
-    bool _wrnngBlnks{false};
-    unsigned long int _wrnngBlnkRate{250};
-    unsigned long int _wrnngLstSwp{0};
-    bool _blnkOutputOn{true};
-public:
-    StrcsTmrSwitch(HntdTmLtchMPBttn &lgcMPB, uint8_t loadPin,uint8_t wnngPin = 0, uint8_t pltPin = 0);
-    bool updOutputs();
-    bool setActvPilot(bool actvPilot);
-    bool setActvWarning(bool actvWarning);
-    const bool getActvPilot() const;
-    const bool getActvWarning() const;
-    HntdTmLtchMPBttn* getUnderlMPB();
-    bool setBlnkWrnng(bool newBlnkSett);
-    bool setBlnkRate(unsigned long int newBlnkRate);
-    bool blinkWrnng();
-    bool noBlinkWrnng();    
-    static uint8_t stSwtchCount;
-};
-
-//=============================================================>
-
 class DbncdDlydSwitch: public HILSwitches{
   static TaskHandle_t ddSwtchTskHndl;  //TaskHandle to the updating task that keeps this class objects outputs updated
 protected:
@@ -71,5 +40,72 @@ public:
 };
 
 //=============================================================>
+
+class StrcsTmrSwitch: public HILSwitches{
+  static TaskHandle_t stSwtchTskHndl;  //TaskHandle to the updating task that keeps this class objects outputs updated
+protected:
+  HntdTmLtchMPBttn* _underlMPB;
+  uint8_t _loadPin{};
+  uint8_t _wrnngPin{};
+  uint8_t _pltPin{};
+
+  bool _actvWrnng{false};
+  bool _actvPlt {false};
+  bool _wrnngBlnks{false};
+  unsigned long int _wrnngBlnkRate{250};
+  unsigned long int _wrnngLstSwp{0};
+  bool _blnkOutputOn{true};
+public:
+  StrcsTmrSwitch(HntdTmLtchMPBttn &lgcMPB, uint8_t loadPin,uint8_t wnngPin = 0, uint8_t pltPin = 0);
+  bool updOutputs();
+  bool setActvPilot(bool actvPilot);
+  bool setActvWarning(bool actvWarning);
+  const bool getActvPilot() const;
+  const bool getActvWarning() const;
+  HntdTmLtchMPBttn* getUnderlMPB();
+  bool setBlnkWrnng(bool newBlnkSett);
+  bool setBlnkRate(unsigned long int newBlnkRate);
+  bool blinkWrnng();
+  bool noBlinkWrnng();    
+  static uint8_t stSwtchCount;
+};
+
+//=============================================================>
+
+class HntdTmVdblScrtySwitch: public HILSwitches{
+  static TaskHandle_t htvsSwtchTskHndl;
+protected:
+  TmVdblMPBttn* _underlMPB;
+  uint8_t _loadPin{};
+  uint8_t _pressOkPin{};
+  uint8_t _voidedPin{};
+  uint8_t _disabledPin{};
+  const unsigned long int _minVoidTime{1000};
+  bool _enabled{true};
+  bool _onIfDisabled{false};
+public:
+  HntdTmVdblScrtySwitch(TmVdblMPBttn &lgcMPB, uint8_t loadPin, uint8_t pressOkPin = 0, uint8_t voidedPin = 0, uint8_t disabledPin = 0);
+  bool updOutputs();
+  bool setEnabled(bool newEnable);
+  bool setOnIfDisabled(bool newIsOn);
+  bool enable();
+  bool disable();
+};
+
+//=============================================================>
+
+/*class GuardedSwitch: public HILSwitches{
+  static TaskHandle_t grddSwtchTskHndl;
+protected:
+  DbncdDlydMPBttn* _underlGuard;
+  DbncdDlydMPBttn* _underlMPB;
+  uint8_t _loadPin{};
+public:
+  GuardedSwitch();
+  bool updOutputs();
+  DbncdDlydMPBttn* getUnderlGuard();
+  DbncdDlydMPBttn* getUnderlMPB();
+};*/
+
 
 #endif
