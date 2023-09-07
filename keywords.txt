@@ -1,0 +1,18 @@
+###############################################
+# Syntax Coloring Map For switchHIL
+###############################################
+
+###############################################
+# Datatypes (KEYWORD1)
+###############################################
+
+HILSwitches KEYWORD1
+DbncdDlydSwitch KEYWORD1
+StrcsTmrSwitch    KEYWORD1
+
+###############################################
+# Methods and Functions (KEYWORD2)
+###############################################
+# DbncdDlydSwitch
+#############
+updOutputs   KEYWORD2
