@@ -9,6 +9,10 @@ uint8_t DbncdDlydSwitch::ddSwtchCount = 0;
 TaskHandle_t DbncdDlydSwitch::ddSwtchTskHndl = nullptr;
 DbncdDlydSwitch* ddSwtchsInstances[MAX_SWITCHES];
 
+uint8_t HntdTmVdblScrtySwitch::htvsSwtchCount = 0;
+TaskHandle_t HntdTmVdblScrtySwitch::htvsSwtchTskHndl = nullptr;
+HntdTmVdblScrtySwitch* htvsSwtchsInstances[MAX_SWITCHES];
+
 void stSwtchsTskCallback(void* argp){
   //StrcsTmrSwitch *mySwtch = (StrcsTmrSwitch*)argp;  //Parameter casting: the parameter passed by the task is casted to its real type
 
@@ -32,10 +36,74 @@ void ddSwtchsTskCallback(void* argp){
   }
 }
 
+void htvsSwtchsTskCallback(void *argp){
+  //TmVdblMPBttn *mySwtch = (TmVdblMPBttn*)argp;  //Parameter casting: the parameter passed by the task is casted to its real type
+  for (;;){
+    for(int i{0}; i < HntdTmVdblScrtySwitch::htvsSwtchCount; i++){
+       htvsSwtchsInstances[i]->updOutputs();
+    }
+    vTaskDelay(10/portTICK_PERIOD_MS);  //There's no need to refresh the outputs so frequently, and failing to let lower priorities tasks includes the idle(), so the Watchdog will reset the mcu
+
+  }
+
+}
 //=========================================================================> Class methods delimiter 
 
 HILSwitches::HILSwitches(){ //This default constructor of this superclass will be called first each time the constructor of the subclasses are invoked
 
+}
+
+//=========================================================================> Class methods delimiter
+
+DbncdDlydSwitch::DbncdDlydSwitch(DbncdDlydMPBttn &lgcMPB, uint8_t loadPin)
+:_underlMPB{&lgcMPB}, _loadPin{loadPin}
+{
+    //Set the output pins to the required states
+    digitalWrite(_loadPin, LOW);   //Ensure the pin signal is down before setting as output for safety. Usually unneded as all pins are initiated openC, 
+    pinMode(_loadPin, OUTPUT);
+
+    if (!ddSwtchTskHndl){  //The task has not been created yet, create it through a function that all switch classes must use
+        //int app_cpu = xPortGetCoreID();
+
+        //Set the task to keep the outputs updated and set the function name to the updater function
+        rc = xTaskCreatePinnedToCore(
+        ddSwtchsTskCallback,  //function to be called
+        "UpdDdSwtchOutputs",  //Name of the task
+        1716,   //Stack size (in bytes in ESP32, words in FreeRTOS), the minimum value is in the config file, for this is 768 bytes
+        &ddSwtchsInstances,  //Pointer to the parameters for the function to work with
+       _exePrty,      //Priority level given to the task
+        &ddSwtchTskHndl, //Task handle
+        app_cpu //Run in the App Core if it's a dual core mcu (ESP-FreeRTOS specific)
+        );
+        assert(rc == pdPASS);
+        assert(ddSwtchTskHndl);
+    }
+    
+    //Add a pointer to the switch instantiated to the array of pointers of switches whose outputs must be updated
+    if(ddSwtchCount < MAX_SWITCHES){
+        ddSwtchsInstances[ddSwtchCount] = this;
+        ++ddSwtchCount;
+        ++totalSwitchesCount;
+    }
+    _underlMPB->begin(); //Set the logical underlying mpBttn to start updating it's inputs readings & output states
+}
+
+bool DbncdDlydSwitch::updOutputs(){
+    if(_underlMPB->getIsOn()){
+        if(digitalRead(_loadPin) != HIGH)
+            digitalWrite(_loadPin, HIGH);
+    }
+    else{
+        if(digitalRead(_loadPin) != LOW)
+            digitalWrite(_loadPin, LOW);
+    }
+
+    return true;
+}
+
+DbncdDlydMPBttn* DbncdDlydSwitch::getUnderlMPB(){
+    
+    return _underlMPB;
 }
 
 //=========================================================================> Class methods delimiter 
@@ -76,7 +144,7 @@ StrcsTmrSwitch::StrcsTmrSwitch(HntdTmLtchMPBttn &lgcMPB, uint8_t loadPin, uint8_
         assert(stSwtchTskHndl);
     }
     
-    //Add a pointer to the switch instantiated to the array of pointers of switches whose outputs must be updated
+    //Add a pointer to the switch instantiated in the array of pointers of switches whose outputs must be updated
     if(stSwtchCount < MAX_SWITCHES){
         stSwtchsInstances[stSwtchCount] = this;
         ++stSwtchCount;
@@ -215,74 +283,112 @@ bool StrcsTmrSwitch::noBlinkWrnng(){
 
 //=========================================================================> Class methods delimiter
 
-DbncdDlydSwitch::DbncdDlydSwitch(DbncdDlydMPBttn &lgcMPB, uint8_t loadPin)
-:_underlMPB{&lgcMPB}, _loadPin{loadPin}
+HntdTmVdblScrtySwitch::HntdTmVdblScrtySwitch(TmVdblMPBttn &lgcMPB, uint8_t loadPin, uint8_t voidedPin, uint8_t disabledPin)
+:_underlMPB{&lgcMPB}, _loadPin{loadPin}, _voidedPin{voidedPin}, _disabledPin{disabledPin}
 {
     //Set the output pins to the required states
     digitalWrite(_loadPin, LOW);   //Ensure the pin signal is down before setting as output for safety. Usually unneded as all pins are initiated openC, 
     pinMode(_loadPin, OUTPUT);
 
-    if (!ddSwtchTskHndl){  //The task has not been created yet, create it through a function that all switch classes must use
-        //int app_cpu = xPortGetCoreID();
+    if (_voidedPin > 0){
+        digitalWrite(_voidedPin, LOW);   //Ensure the pin signal is down before setting as output for safety. Usually unneded as all pins are initiated openC, 
+        pinMode(_voidedPin, OUTPUT);
+    }
+
+    if (_disabledPin > 0){
+        digitalWrite(_disabledPin, LOW);   //Ensure the pin signal is down before setting as output for safety. Usually unneded as all pins are initiated openC, 
+        pinMode(_disabledPin, OUTPUT);
+    }
+    if (!htvsSwtchTskHndl){  //The task has not been created yet, create it through a function that all switch classes must use
 
         //Set the task to keep the outputs updated and set the function name to the updater function
         rc = xTaskCreatePinnedToCore(
-        ddSwtchsTskCallback,  //function to be called
-        "UpdDdSwtchOutputs",  //Name of the task
-        1716,   //Stack size (in bytes in ESP32, words in FreeRTOS), the minimum value is in the config file, for this is 768 bytes
-        &ddSwtchsInstances,  //Pointer to the parameters for the function to work with
-       _exePrty,      //Priority level given to the task
-        &ddSwtchTskHndl, //Task handle
+        htvsSwtchsTskCallback,  //function to be called
+        "UpdHtvsSwtchOutputs",  //Name of the task
+        1716,   //Stack size (in bytes in ESP32, words in FreeRTOS), the minimum value is in the config file, for this is 768 bytes, this gives a size of 1.5 KB
+        &htvsSwtchsInstances,  //Pointer to the parameters for the function to work with
+        _exePrty,      //Priority level given to the task
+        &htvsSwtchTskHndl, //Task handle
         app_cpu //Run in the App Core if it's a dual core mcu (ESP-FreeRTOS specific)
         );
         assert(rc == pdPASS);
-        assert(ddSwtchTskHndl);
+        assert(htvsSwtchTskHndl);
     }
     
     //Add a pointer to the switch instantiated to the array of pointers of switches whose outputs must be updated
-    if(ddSwtchCount < MAX_SWITCHES){
-        ddSwtchsInstances[ddSwtchCount] = this;
-        ++ddSwtchCount;
+    if(htvsSwtchCount < MAX_SWITCHES){
+        htvsSwtchsInstances[htvsSwtchCount] = this;
+        ++htvsSwtchCount;
         ++totalSwitchesCount;
-    }
-    _underlMPB->begin(); //Set the logical underlying mpBttn to start updating it's inputs readings & output states
-}
-
-bool DbncdDlydSwitch::updOutputs(){
-    if(_underlMPB->getIsOn()){
-        if(digitalRead(_loadPin) != HIGH)
-            digitalWrite(_loadPin, HIGH);
-    }
-    else{
-        if(digitalRead(_loadPin) != LOW)
-            digitalWrite(_loadPin, LOW);
-    }
-
-    return true;
-}
-
-DbncdDlydMPBttn* DbncdDlydSwitch::getUnderlMPB(){
+    }            
     
-    return _underlMPB;
-}
+    _underlMPB->begin(); //Set the logical underlying mpBttn to start updating it's inputs readings & output states
 
-//=========================================================================> Class methods delimiter
-
-HntdTmVdblScrtySwitch::HntdTmVdblScrtySwitch(TmVdblMPBttn &lgcMPB, uint8_t loadPin, uint8_t pressOkPin, uint8_t voidedPin, uint8_t disabledPin)
-:_underlMPB{&lgcMPB}, _loadPin{loadPin}, _pressOkPin{pressOkPin}, _voidedPin{voidedPin}, _disabledPin{disabledPin}
-{
 }
 
 bool HntdTmVdblScrtySwitch::updOutputs(){
-    return false;
+    
+    if(!_enabled){ // The switch is DISABLED, handle the outputs accordingly
+        // Set disabledPin ON
+        updIsEnabled(false);
+        //If the switch is disabled there should be no voided indication
+        updIsVoided(false);
+        // if the switch should stay on when disabled
+        updIsOn(_onIfDisabled);
+        // if(_onIfDisabled){      
+        //     updIsOn(true);  // LoadPin is forced ON
+        // }
+        // else{
+        //     updIsOn(false); // LoadPin is forced OFF
+        // }
+    }
+    else{
+        //The switch is ENABLED, update outputs accordingly
+        //Update disabled pin
+        updIsEnabled(true);   // Set disabledPin OFF
+        //Update voided status/pins
+        updIsVoided(_underlMPB->getIsVoided());
+        //Update On status/pins
+        updIsOn(_underlMPB->getIsOn());
+    }
+    
+    return true;
 }
 
-bool HntdTmVdblScrtySwitch::setEnabled(bool newEnable)
-{
-    if (_enabled != newEnable)
-        _enabled = newEnable;
-    
+bool HntdTmVdblScrtySwitch::setEnabled(bool newEnabled){
+    if (_enabled != newEnabled){
+        _enabled = newEnabled;
+    }
+
     return _enabled;
+}
+
+bool HntdTmVdblScrtySwitch::updIsEnabled(const bool &enabledValue){
+    if(_disabledPin > 0){
+        if(enabledValue != (!digitalRead(_disabledPin)))
+            digitalWrite(_disabledPin, !enabledValue);
+    }
+
+    return enabledValue;
+
+}
+
+bool HntdTmVdblScrtySwitch::updIsOn(const bool &onValue){
+    if(_loadPin > 0){
+        if(onValue != digitalRead(_loadPin))
+            digitalWrite(_loadPin, onValue);
+    }
+
+    return onValue;
+}
+
+bool HntdTmVdblScrtySwitch::updIsVoided(const bool &voidValue){
+    if(_voidedPin > 0){
+        if(voidValue != digitalRead(_voidedPin) )
+            digitalWrite(_voidedPin, voidValue);
+    }
+    
+    return voidValue;
 }
 
 bool HntdTmVdblScrtySwitch::setOnIfDisabled(bool newIsOn){

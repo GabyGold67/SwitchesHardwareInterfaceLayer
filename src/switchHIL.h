@@ -77,19 +77,23 @@ class HntdTmVdblScrtySwitch: public HILSwitches{
 protected:
   TmVdblMPBttn* _underlMPB;
   uint8_t _loadPin{};
-  uint8_t _pressOkPin{};
   uint8_t _voidedPin{};
   uint8_t _disabledPin{};
+  
   const unsigned long int _minVoidTime{1000};
   bool _enabled{true};
   bool _onIfDisabled{false};
 public:
-  HntdTmVdblScrtySwitch(TmVdblMPBttn &lgcMPB, uint8_t loadPin, uint8_t pressOkPin = 0, uint8_t voidedPin = 0, uint8_t disabledPin = 0);
+  HntdTmVdblScrtySwitch(TmVdblMPBttn &lgcMPB, uint8_t loadPin, uint8_t voidedPin = 0, uint8_t disabledPin = 0);
   bool updOutputs();
   bool setEnabled(bool newEnable);
+  bool updIsEnabled(const bool &enabledValue);
+  bool updIsOn(const bool &onValue);
+  bool updIsVoided(const bool &voidValue);
   bool setOnIfDisabled(bool newIsOn);
   bool enable();
   bool disable();
+  static uint8_t htvsSwtchCount;
 };
 
 //=============================================================>
