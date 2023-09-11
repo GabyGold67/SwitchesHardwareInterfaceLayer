@@ -1,6 +1,12 @@
 #include <switchHIL.h>
 
-//Static members
+//Static members for HILSwitches CLASS <<================
+//static uint8_t totalSwitchesCount = 0; //Counter of all instantiated HILSwitches objects
+uint8_t HILSwitches::totalSwitchesCount = 0; //Counter of all instantiated HILSwitches objects
+TaskHandle_t HILSwitches::HILSwtchsTskHndl = nullptr;
+HILSwitches* HILSwtchsInstances[MAX_SWITCHES_TOTAL];
+
+//Static members for HILSwitches SUBCLASSES
 uint8_t StrcsTmrSwitch::stSwtchCount = 0;
 TaskHandle_t StrcsTmrSwitch::stSwtchTskHndl = nullptr;
 StrcsTmrSwitch* stSwtchsInstances[MAX_SWITCHES];
@@ -14,10 +20,10 @@ TaskHandle_t HntdTmVdblScrtySwitch::htvsSwtchTskHndl = nullptr;
 HntdTmVdblScrtySwitch* htvsSwtchsInstances[MAX_SWITCHES];
 
 void stSwtchsTskCallback(void* argp){
-  //StrcsTmrSwitch *mySwtch = (StrcsTmrSwitch*)argp;  //Parameter casting: the parameter passed by the task is casted to its real type
+  //StrcsTmrSwitch *mySwtch = (StrcsTmrSwitch*)argp; //Parameter casting: the parameter passed by the task is casted to its real type
 
   for (;;){
-    for(int i{0}; i < StrcsTmrSwitch::stSwtchCount; i++){
+    for(int i{0}; i < StrcsTmrSwitch::getSwitchesCount(); i++){
        stSwtchsInstances[i]->updOutputs();
     }
     vTaskDelay(10/portTICK_PERIOD_MS);  //There's no need to refresh the outputs so frequently, and failing to let lower priorities tasks includes the idle(), so the Watchdog will reset the mcu
@@ -28,7 +34,7 @@ void ddSwtchsTskCallback(void* argp){
   //DbncdDlydSwitch *mySwtch = (DbncdDlydSwitch*)argp;  //Parameter casting: the parameter passed by the task is casted to its real type
 
   for (;;){
-    for(int i{0}; i < DbncdDlydSwitch::ddSwtchCount; i++){
+    for(int i{0}; i < DbncdDlydSwitch::getSwitchesCount(); i++){
        ddSwtchsInstances[i]->updOutputs();
     }
     vTaskDelay(10/portTICK_PERIOD_MS);  //There's no need to refresh the outputs so frequently, and failing to let lower priorities tasks includes the idle(), so the Watchdog will reset the mcu
@@ -39,7 +45,7 @@ void ddSwtchsTskCallback(void* argp){
 void htvsSwtchsTskCallback(void *argp){
   //TmVdblMPBttn *mySwtch = (TmVdblMPBttn*)argp;  //Parameter casting: the parameter passed by the task is casted to its real type
   for (;;){
-    for(int i{0}; i < HntdTmVdblScrtySwitch::htvsSwtchCount; i++){
+    for(int i{0}; i < HntdTmVdblScrtySwitch::getSwitchesCount(); i++){
        htvsSwtchsInstances[i]->updOutputs();
     }
     vTaskDelay(10/portTICK_PERIOD_MS);  //There's no need to refresh the outputs so frequently, and failing to let lower priorities tasks includes the idle(), so the Watchdog will reset the mcu
@@ -47,10 +53,48 @@ void htvsSwtchsTskCallback(void *argp){
   }
 
 }
+
+void HILSwtchsTskCallback(void *argp){
+  //TmVdblMPBttn *mySwtch = (TmVdblMPBttn*)argp;  //Parameter casting: the parameter passed by the task is casted to its real type
+  for (;;){
+    for(int i{0}; i < HILSwitches::getSwitchesCount(); i++){
+       HILSwtchsInstances[i]->updOutputs();
+    }
+    vTaskDelay(10/portTICK_PERIOD_MS);  //There's no need to refresh the outputs so frequently, and failing to let lower priorities tasks includes the idle(), so the Watchdog will reset the mcu
+
+  }
+    
+}
 //=========================================================================> Class methods delimiter 
 
 HILSwitches::HILSwitches(){ //This default constructor of this superclass will be called first each time the constructor of the subclasses are invoked
+    //<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<  WIP START
+    //Under development, trying to build a general HILSwitches subclasses array of pointers!
+        /*
+        if (!HILSwtchsTskHndl){  //The task has not been created yet, create it through a function that all switch classes must use
 
+            //Set the task to keep the outputs updated and set the function name to the updater function
+            rc = xTaskCreatePinnedToCore(
+            HILSwtchsTskCallback,  //function to be called
+            "UpdHILSwtchOutputs",  //Name of the task
+            1716,   //Stack size (in bytes in ESP32, words in FreeRTOS), the minimum value is in the config file, for this is 768 bytes
+            &HILSwtchsInstances,  //Pointer to the parameters for the function to work with
+            _exePrty,      //Priority level given to the task
+            &HILSwtchsTskHndl, //Task handle
+            app_cpu //Run in the App Core if it's a dual core mcu (ESP-FreeRTOS specific)
+            );
+            assert(rc == pdPASS);
+            assert(HILSwtchsTskHndl);
+        }
+        */
+    //<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<  WIP END
+
+
+}
+
+uint8_t HILSwitches::getSwitchesCount(){
+  
+  return totalSwitchesCount;
 }
 
 //=========================================================================> Class methods delimiter
@@ -71,20 +115,25 @@ DbncdDlydSwitch::DbncdDlydSwitch(DbncdDlydMPBttn &lgcMPB, uint8_t loadPin)
         "UpdDdSwtchOutputs",  //Name of the task
         1716,   //Stack size (in bytes in ESP32, words in FreeRTOS), the minimum value is in the config file, for this is 768 bytes
         &ddSwtchsInstances,  //Pointer to the parameters for the function to work with
-       _exePrty,      //Priority level given to the task
+        _exePrty,      //Priority level given to the task
         &ddSwtchTskHndl, //Task handle
         app_cpu //Run in the App Core if it's a dual core mcu (ESP-FreeRTOS specific)
         );
         assert(rc == pdPASS);
         assert(ddSwtchTskHndl);
     }
-    
-    //Add a pointer to the switch instantiated to the array of pointers of switches whose outputs must be updated
+    //Add a pointer to the switch instantiated to the array of pointers to Debounced Delayed Switches whose outputs must be updated
     if(ddSwtchCount < MAX_SWITCHES){
         ddSwtchsInstances[ddSwtchCount] = this;
         ++ddSwtchCount;
+    }
+
+    //Add a pointer to the switch instantiated to the array of pointers to all HILSwitches subclasses created
+    if(totalSwitchesCount < MAX_SWITCHES_TOTAL){
+        HILSwtchsInstances[totalSwitchesCount] = this;
         ++totalSwitchesCount;
     }
+
     _underlMPB->begin(); //Set the logical underlying mpBttn to start updating it's inputs readings & output states
 }
 
@@ -104,6 +153,11 @@ bool DbncdDlydSwitch::updOutputs(){
 DbncdDlydMPBttn* DbncdDlydSwitch::getUnderlMPB(){
     
     return _underlMPB;
+}
+
+uint8_t DbncdDlydSwitch::getSwitchesCount(){
+    
+    return ddSwtchCount;
 }
 
 //=========================================================================> Class methods delimiter 
@@ -148,9 +202,14 @@ StrcsTmrSwitch::StrcsTmrSwitch(HntdTmLtchMPBttn &lgcMPB, uint8_t loadPin, uint8_
     if(stSwtchCount < MAX_SWITCHES){
         stSwtchsInstances[stSwtchCount] = this;
         ++stSwtchCount;
-        ++totalSwitchesCount;
     }            
-    
+
+    //Add a pointer to the switch instantiated to the array of HIL pointers of switches whose outputs must be updated
+    if(totalSwitchesCount < MAX_SWITCHES_TOTAL){
+        HILSwtchsInstances[totalSwitchesCount] = this;
+        ++totalSwitchesCount;
+    }
+
     _underlMPB->begin(); //Set the logical underlying mpBttn to start updating it's inputs readings & output states
 }
 
@@ -281,6 +340,11 @@ bool StrcsTmrSwitch::noBlinkWrnng(){
     return setBlnkWrnng(false);
 }
 
+uint8_t StrcsTmrSwitch::getSwitchesCount(){
+    
+    return stSwtchCount;
+}
+
 //=========================================================================> Class methods delimiter
 
 HntdTmVdblScrtySwitch::HntdTmVdblScrtySwitch(TmVdblMPBttn &lgcMPB, uint8_t loadPin, uint8_t voidedPin, uint8_t disabledPin)
@@ -319,8 +383,13 @@ HntdTmVdblScrtySwitch::HntdTmVdblScrtySwitch(TmVdblMPBttn &lgcMPB, uint8_t loadP
     if(htvsSwtchCount < MAX_SWITCHES){
         htvsSwtchsInstances[htvsSwtchCount] = this;
         ++htvsSwtchCount;
-        ++totalSwitchesCount;
     }            
+
+    //Add a pointer to the switch instantiated to the array of HIL pointers of switches whose outputs must be updated
+    if(totalSwitchesCount < MAX_SWITCHES_TOTAL){
+        HILSwtchsInstances[totalSwitchesCount] = this;
+        ++totalSwitchesCount;
+    }
     
     _underlMPB->begin(); //Set the logical underlying mpBttn to start updating it's inputs readings & output states
 
@@ -361,6 +430,11 @@ bool HntdTmVdblScrtySwitch::setEnabled(bool newEnabled){
     }
 
     return _enabled;
+}
+
+uint8_t HntdTmVdblScrtySwitch::getSwitchesCount(){
+    
+    return htvsSwtchCount;
 }
 
 bool HntdTmVdblScrtySwitch::updIsEnabled(const bool &enabledValue){
@@ -406,4 +480,30 @@ bool HntdTmVdblScrtySwitch::enable(){
 bool HntdTmVdblScrtySwitch::disable(){
     
     return setEnabled(false);
+}
+
+//=========================================================================> Class methods delimiter
+
+GuardedSwitch::GuardedSwitch(DbncdDlydMPBttn* underlMPB, DbncdDlydMPBttn* underlGuard, uint8_t loadPin)
+{
+}
+
+bool GuardedSwitch::updOutputs(){
+
+    return false;
+}
+
+DbncdDlydMPBttn *GuardedSwitch::getUnderlMPB(){
+
+    return nullptr;
+}
+
+uint8_t GuardedSwitch::getSwitchesCount(){
+    
+    return gSwtchCount;
+}
+
+DbncdDlydMPBttn *GuardedSwitch::getUnderlGuard(){
+    
+    return nullptr;
 }
