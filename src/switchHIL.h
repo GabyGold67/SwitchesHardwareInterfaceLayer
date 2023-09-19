@@ -4,32 +4,29 @@
 #include <Arduino.h>
 #include <mpbToSwitch.h>
 
-#define MAX_SWITCHES 5
+#define MAX_SWITCHES_PER_CLASS 5
 #define MAX_SWITCHES_TOTAL 20
 #define MIN_BLINK_RATE 100
 
 //Function prototypes
 
 //Global variables
-//static uint8_t totalSwitchesCount = 0; //Counter of all instantiated HILSwitches objects
 static const uint8_t _exePrty = 1;   //Execution priority of the updating Task
 static const int app_cpu = xPortGetCoreID();
 static BaseType_t rc;
 
 //Classes definitions
-class HILSwitches{  //Virtual class used as superclass of all the switches
+class HILSwitches{  //Virtual superclass (Base Class) for all the switches subclases
 protected:
   uint8_t _loadPin{};
   static uint8_t totalSwitchesCount;
 public:
   HILSwitches();
+  virtual ~HILSwitches();
   virtual bool updOutputs() = 0;  //Makes it a virtual class and forces all subclasses to  implement this method, used to update outputs states
   static uint8_t getSwitchesCount();
 
-//<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<  WIP START  
   static TaskHandle_t HILSwtchsTskHndl;
-//<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<  WIP END
-
 };
 
 //=============================================================>
@@ -42,7 +39,7 @@ protected:
   static uint8_t ddSwtchCount;
 public:
   DbncdDlydSwitch(DbncdDlydMPBttn &lgcMPB, uint8_t loadPin);
-  bool updOutputs();
+  virtual bool updOutputs();
   DbncdDlydMPBttn* getUnderlMPB();
   static uint8_t getSwitchesCount();
 };
@@ -66,7 +63,7 @@ protected:
   static uint8_t stSwtchCount;
 public:
   StrcsTmrSwitch(HntdTmLtchMPBttn &lgcMPB, uint8_t loadPin,uint8_t wnngPin = 0, uint8_t pltPin = 0);
-  bool updOutputs();
+  virtual bool updOutputs();
   bool setActvPilot(bool actvPilot);
   bool setActvWarning(bool actvWarning);
   const bool getActvPilot() const;
@@ -96,7 +93,7 @@ protected:
   static uint8_t htvsSwtchCount;
 public:
   HntdTmVdblScrtySwitch(TmVdblMPBttn &lgcMPB, uint8_t loadPin, uint8_t voidedPin = 0, uint8_t disabledPin = 0);
-  bool updOutputs();
+  virtual bool updOutputs();
   bool setEnabled(bool newEnable);
   bool updIsEnabled(const bool &enabledValue);
   bool updIsOn(const bool &onValue);
@@ -119,7 +116,7 @@ protected:
   static uint8_t gSwtchCount;
 public:
   GuardedSwitch(DbncdDlydMPBttn* underlMPB, DbncdDlydMPBttn* underlGuard, uint8_t loadPin);
-  bool updOutputs();
+  virtual bool updOutputs();
   DbncdDlydMPBttn* getUnderlMPB();
   DbncdDlydMPBttn* getUnderlGuard();
   static uint8_t getSwitchesCount();

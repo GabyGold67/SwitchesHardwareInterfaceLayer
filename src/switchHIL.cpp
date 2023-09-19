@@ -1,33 +1,32 @@
 #include <switchHIL.h>
 
 //Static members for HILSwitches CLASS <<================
-//static uint8_t totalSwitchesCount = 0; //Counter of all instantiated HILSwitches objects
 uint8_t HILSwitches::totalSwitchesCount = 0; //Counter of all instantiated HILSwitches objects
 TaskHandle_t HILSwitches::HILSwtchsTskHndl = nullptr;
-HILSwitches* HILSwtchsInstances[MAX_SWITCHES_TOTAL];
+HILSwitches** HILSwtchsInstPtrs{nullptr};   // pointer to a array of pointers that'll be created dinamically if needed at runtime when HILSwitches is first instantiated
 
 //Static members for HILSwitches SUBCLASSES
-uint8_t StrcsTmrSwitch::stSwtchCount = 0;
-TaskHandle_t StrcsTmrSwitch::stSwtchTskHndl = nullptr;
-StrcsTmrSwitch* stSwtchsInstances[MAX_SWITCHES];
-
 uint8_t DbncdDlydSwitch::ddSwtchCount = 0;
 TaskHandle_t DbncdDlydSwitch::ddSwtchTskHndl = nullptr;
-DbncdDlydSwitch* ddSwtchsInstances[MAX_SWITCHES];
+DbncdDlydSwitch** ddSwtchsInstPtrs{nullptr};
+
+uint8_t StrcsTmrSwitch::stSwtchCount = 0;
+TaskHandle_t StrcsTmrSwitch::stSwtchTskHndl = nullptr;
+StrcsTmrSwitch** stSwtchsInstPtrs{nullptr};
 
 uint8_t HntdTmVdblScrtySwitch::htvsSwtchCount = 0;
 TaskHandle_t HntdTmVdblScrtySwitch::htvsSwtchTskHndl = nullptr;
-HntdTmVdblScrtySwitch* htvsSwtchsInstances[MAX_SWITCHES];
+HntdTmVdblScrtySwitch** htvsSwtchsInstPtrs{nullptr};
 
-void stSwtchsTskCallback(void* argp){
-  //StrcsTmrSwitch *mySwtch = (StrcsTmrSwitch*)argp; //Parameter casting: the parameter passed by the task is casted to its real type
-
+void HILSwtchsTskCallback(void *argp){
+  //TmVdblMPBttn *mySwtch = (TmVdblMPBttn*)argp;  //Parameter casting: the parameter passed by the task is casted to its real type
   for (;;){
-    for(int i{0}; i < StrcsTmrSwitch::getSwitchesCount(); i++){
-       stSwtchsInstances[i]->updOutputs();
+    for(int i{0}; i < HILSwitches::getSwitchesCount(); i++){
+       HILSwtchsInstPtrs[i]->updOutputs();
     }
-    vTaskDelay(10/portTICK_PERIOD_MS);  //There's no need to refresh the outputs so frequently, and failing to let lower priorities tasks includes the idle(), so the Watchdog will reset the mcu
-  }
+    ulTaskNotifyTake(   pdTRUE,          /* Clear the notification value before exiting. */
+                        portMAX_DELAY ); /* Block indefinitely. */
+  }    
 }
 
 void ddSwtchsTskCallback(void* argp){
@@ -35,10 +34,23 @@ void ddSwtchsTskCallback(void* argp){
 
   for (;;){
     for(int i{0}; i < DbncdDlydSwitch::getSwitchesCount(); i++){
-       ddSwtchsInstances[i]->updOutputs();
+       ddSwtchsInstPtrs[i]->updOutputs();
+    //    HILSwtchsInstPtrs[i]->updOutputs();   //This works fine, refreshes the output of all the implemented switches derived from HILSwitches!!
     }
-    vTaskDelay(10/portTICK_PERIOD_MS);  //There's no need to refresh the outputs so frequently, and failing to let lower priorities tasks includes the idle(), so the Watchdog will reset the mcu
+    ulTaskNotifyTake(   pdTRUE,          /* Clear the notification value before exiting. */
+                        portMAX_DELAY ); /* Block indefinitely. */
+  }
+}
 
+void stSwtchsTskCallback(void* argp){
+  //StrcsTmrSwitch *mySwtch = (StrcsTmrSwitch*)argp; //Parameter casting: the parameter passed by the task is casted to its real type
+
+  for (;;){
+    for(int i{0}; i < StrcsTmrSwitch::getSwitchesCount(); i++){
+       stSwtchsInstPtrs[i]->updOutputs();
+    }
+    ulTaskNotifyTake(   pdTRUE,          /* Clear the notification value before exiting. */
+                        portMAX_DELAY ); /* Block indefinitely. */
   }
 }
 
@@ -46,28 +58,16 @@ void htvsSwtchsTskCallback(void *argp){
   //TmVdblMPBttn *mySwtch = (TmVdblMPBttn*)argp;  //Parameter casting: the parameter passed by the task is casted to its real type
   for (;;){
     for(int i{0}; i < HntdTmVdblScrtySwitch::getSwitchesCount(); i++){
-       htvsSwtchsInstances[i]->updOutputs();
+       htvsSwtchsInstPtrs[i]->updOutputs();
     }
-    vTaskDelay(10/portTICK_PERIOD_MS);  //There's no need to refresh the outputs so frequently, and failing to let lower priorities tasks includes the idle(), so the Watchdog will reset the mcu
-
+    ulTaskNotifyTake(   pdTRUE,          /* Clear the notification value before exiting. */
+                        portMAX_DELAY ); /* Block indefinitely. */
   }
-
 }
 
-void HILSwtchsTskCallback(void *argp){
-  //TmVdblMPBttn *mySwtch = (TmVdblMPBttn*)argp;  //Parameter casting: the parameter passed by the task is casted to its real type
-  for (;;){
-    for(int i{0}; i < HILSwitches::getSwitchesCount(); i++){
-       HILSwtchsInstances[i]->updOutputs();
-    }
-    vTaskDelay(10/portTICK_PERIOD_MS);  //There's no need to refresh the outputs so frequently, and failing to let lower priorities tasks includes the idle(), so the Watchdog will reset the mcu
-
-  }
-    
-}
 //=========================================================================> Class methods delimiter 
 
-HILSwitches::HILSwitches(){ //This default constructor of this superclass will be called first each time the constructor of the subclasses are invoked
+HILSwitches::HILSwitches(){ //This default constructor of this base class will be called first each time the constructor of the subclasses are invoked
     //<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<  WIP START
     //Under development, trying to build a general HILSwitches subclasses array of pointers!
         /*
@@ -92,6 +92,9 @@ HILSwitches::HILSwitches(){ //This default constructor of this superclass will b
 
 }
 
+HILSwitches::~HILSwitches(){
+}
+
 uint8_t HILSwitches::getSwitchesCount(){
   
   return totalSwitchesCount;
@@ -114,7 +117,7 @@ DbncdDlydSwitch::DbncdDlydSwitch(DbncdDlydMPBttn &lgcMPB, uint8_t loadPin)
         ddSwtchsTskCallback,  //function to be called
         "UpdDdSwtchOutputs",  //Name of the task
         1716,   //Stack size (in bytes in ESP32, words in FreeRTOS), the minimum value is in the config file, for this is 768 bytes
-        &ddSwtchsInstances,  //Pointer to the parameters for the function to work with
+        &ddSwtchsInstPtrs,  //Pointer to the parameters for the function to work with
         _exePrty,      //Priority level given to the task
         &ddSwtchTskHndl, //Task handle
         app_cpu //Run in the App Core if it's a dual core mcu (ESP-FreeRTOS specific)
@@ -122,17 +125,29 @@ DbncdDlydSwitch::DbncdDlydSwitch(DbncdDlydMPBttn &lgcMPB, uint8_t loadPin)
         assert(rc == pdPASS);
         assert(ddSwtchTskHndl);
     }
-    //Add a pointer to the switch instantiated to the array of pointers to Debounced Delayed Switches whose outputs must be updated
-    if(ddSwtchCount < MAX_SWITCHES){
-        ddSwtchsInstances[ddSwtchCount] = this;
-        ++ddSwtchCount;
+    
+    //The dynamic solution preferred over the static array built, both cases presented for testing only, one must be selected:
+    //OPTION 1) Dynamic
+    if (ddSwtchsInstPtrs == nullptr){ //First instantantiation of the class, an array will be created
+        ddSwtchsInstPtrs = new DbncdDlydSwitch* [MAX_SWITCHES_PER_CLASS];
+    }
+    if(ddSwtchCount < MAX_SWITCHES_PER_CLASS){
+        ddSwtchsInstPtrs[ddSwtchCount] = this;
+        ++ddSwtchCount; //Commented while testing both cases
     }
 
+
     //Add a pointer to the switch instantiated to the array of pointers to all HILSwitches subclasses created
+    if (HILSwtchsInstPtrs == nullptr){ //First instantantiation of the class, an array will be created
+        HILSwtchsInstPtrs = new HILSwitches* [MAX_SWITCHES_TOTAL];
+    }
     if(totalSwitchesCount < MAX_SWITCHES_TOTAL){
-        HILSwtchsInstances[totalSwitchesCount] = this;
+        HILSwtchsInstPtrs[totalSwitchesCount] = this;
         ++totalSwitchesCount;
     }
+
+    //This implementation of the Switch uses the xTaskToNotify
+    _underlMPB->setTaskToNotify(ddSwtchTskHndl);    //Notify the Underlying DbncdDlydMPButton the taskhandle it'll have to notify is updating the switch outputs
 
     _underlMPB->begin(); //Set the logical underlying mpBttn to start updating it's inputs readings & output states
 }
@@ -189,7 +204,7 @@ StrcsTmrSwitch::StrcsTmrSwitch(HntdTmLtchMPBttn &lgcMPB, uint8_t loadPin, uint8_
         stSwtchsTskCallback,  //function to be called
         "UpdStSwtchOutputs",  //Name of the task
         1716,   //Stack size (in bytes in ESP32, words in FreeRTOS), the minimum value is in the config file, for this is 768 bytes, this gives a size of 1.5 KB
-        &stSwtchsInstances,  //Pointer to the parameters for the function to work with
+        &stSwtchsInstPtrs,  //Pointer to the parameters for the function to work with
         _exePrty,      //Priority level given to the task
         &stSwtchTskHndl, //Task handle
         app_cpu //Run in the App Core if it's a dual core mcu (ESP-FreeRTOS specific)
@@ -199,14 +214,17 @@ StrcsTmrSwitch::StrcsTmrSwitch(HntdTmLtchMPBttn &lgcMPB, uint8_t loadPin, uint8_
     }
     
     //Add a pointer to the switch instantiated in the array of pointers of switches whose outputs must be updated
-    if(stSwtchCount < MAX_SWITCHES){
-        stSwtchsInstances[stSwtchCount] = this;
+    if(stSwtchCount < MAX_SWITCHES_PER_CLASS){
+        stSwtchsInstPtrs[stSwtchCount] = this;
         ++stSwtchCount;
     }            
 
-    //Add a pointer to the switch instantiated to the array of HIL pointers of switches whose outputs must be updated
+    //Add a pointer to the switch instantiated to the array of pointers to all HILSwitches subclasses created
+    if (HILSwtchsInstPtrs == nullptr){ //First instantantiation of the class, an array will be created
+        HILSwtchsInstPtrs = new HILSwitches* [MAX_SWITCHES_TOTAL];
+    }
     if(totalSwitchesCount < MAX_SWITCHES_TOTAL){
-        HILSwtchsInstances[totalSwitchesCount] = this;
+        HILSwtchsInstPtrs[totalSwitchesCount] = this;
         ++totalSwitchesCount;
     }
 
@@ -370,7 +388,7 @@ HntdTmVdblScrtySwitch::HntdTmVdblScrtySwitch(TmVdblMPBttn &lgcMPB, uint8_t loadP
         htvsSwtchsTskCallback,  //function to be called
         "UpdHtvsSwtchOutputs",  //Name of the task
         1716,   //Stack size (in bytes in ESP32, words in FreeRTOS), the minimum value is in the config file, for this is 768 bytes, this gives a size of 1.5 KB
-        &htvsSwtchsInstances,  //Pointer to the parameters for the function to work with
+        &htvsSwtchsInstPtrs,  //Pointer to the parameters for the function to work with
         _exePrty,      //Priority level given to the task
         &htvsSwtchTskHndl, //Task handle
         app_cpu //Run in the App Core if it's a dual core mcu (ESP-FreeRTOS specific)
@@ -380,14 +398,17 @@ HntdTmVdblScrtySwitch::HntdTmVdblScrtySwitch(TmVdblMPBttn &lgcMPB, uint8_t loadP
     }
     
     //Add a pointer to the switch instantiated to the array of pointers of switches whose outputs must be updated
-    if(htvsSwtchCount < MAX_SWITCHES){
-        htvsSwtchsInstances[htvsSwtchCount] = this;
+    if(htvsSwtchCount < MAX_SWITCHES_PER_CLASS){
+        htvsSwtchsInstPtrs[htvsSwtchCount] = this;
         ++htvsSwtchCount;
     }            
 
-    //Add a pointer to the switch instantiated to the array of HIL pointers of switches whose outputs must be updated
+    //Add a pointer to the switch instantiated to the array of pointers to all HILSwitches subclasses created
+    if (HILSwtchsInstPtrs == nullptr){ //First instantantiation of the class, an array will be created
+        HILSwtchsInstPtrs = new HILSwitches* [MAX_SWITCHES_TOTAL];
+    }
     if(totalSwitchesCount < MAX_SWITCHES_TOTAL){
-        HILSwtchsInstances[totalSwitchesCount] = this;
+        HILSwtchsInstPtrs[totalSwitchesCount] = this;
         ++totalSwitchesCount;
     }
     
