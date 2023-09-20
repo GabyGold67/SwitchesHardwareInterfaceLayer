@@ -23,16 +23,14 @@ protected:
 public:
   HILSwitches();
   virtual ~HILSwitches();
-  virtual bool updOutputs() = 0;  //Makes it a virtual class and forces all subclasses to  implement this method, used to update outputs states
+  virtual bool updOutputs() = 0;  //Makes this an abstract class and forces all subclasses to implement this method to become non abstracts (used to update outputs states)
   static uint8_t getSwitchesCount();
-
   static TaskHandle_t HILSwtchsTskHndl;
 };
 
 //=============================================================>
 
 class DbncdDlydSwitch: public HILSwitches{
-  static TaskHandle_t ddSwtchTskHndl;  //TaskHandle to the updating task that keeps this class objects outputs updated
 protected:
   DbncdDlydMPBttn* _underlMPB;
   uint8_t _loadPin{};
@@ -45,9 +43,24 @@ public:
 };
 
 //=============================================================>
+class TmVdblSwitch: public HILSwitches{
+  static TaskHandle_t tvSwtchTskHndl;  //TaskHandle to the updating task that keeps this class objects outputs updated
+protected:
+  TmVdblMPBttn* _underlMPB;
+  uint8_t _loadPin{};
+  static uint8_t tvSwtchCount;
+public:
+  TmVdblSwitch(TmVdblMPBttn &lgcMPB, uint8_t loadPin);
+  virtual bool updOutputs();
+  TmVdblMPBttn* getUnderlMPB();
+  static uint8_t getSwitchesCount();
+
+};
+
+//=============================================================>
 
 class StrcsTmrSwitch: public HILSwitches{
-  static TaskHandle_t stSwtchTskHndl;  //TaskHandle to the updating task that keeps this class objects outputs updated
+  //static TaskHandle_t stSwtchTskHndl;  //TaskHandle to the updating task that keeps this class objects outputs updated
 protected:
   HntdTmLtchMPBttn* _underlMPB;
   uint8_t _loadPin{};

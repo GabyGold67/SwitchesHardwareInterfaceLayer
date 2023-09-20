@@ -7,16 +7,8 @@ HILSwitches** HILSwtchsInstPtrs{nullptr};   // pointer to a array of pointers th
 
 //Static members for HILSwitches SUBCLASSES
 uint8_t DbncdDlydSwitch::ddSwtchCount = 0;
-TaskHandle_t DbncdDlydSwitch::ddSwtchTskHndl = nullptr;
-DbncdDlydSwitch** ddSwtchsInstPtrs{nullptr};
-
 uint8_t StrcsTmrSwitch::stSwtchCount = 0;
-TaskHandle_t StrcsTmrSwitch::stSwtchTskHndl = nullptr;
-StrcsTmrSwitch** stSwtchsInstPtrs{nullptr};
-
 uint8_t HntdTmVdblScrtySwitch::htvsSwtchCount = 0;
-TaskHandle_t HntdTmVdblScrtySwitch::htvsSwtchTskHndl = nullptr;
-HntdTmVdblScrtySwitch** htvsSwtchsInstPtrs{nullptr};
 
 void HILSwtchsTskCallback(void *argp){
   //TmVdblMPBttn *mySwtch = (TmVdblMPBttn*)argp;  //Parameter casting: the parameter passed by the task is casted to its real type
@@ -29,67 +21,28 @@ void HILSwtchsTskCallback(void *argp){
   }    
 }
 
-void ddSwtchsTskCallback(void* argp){
-  //DbncdDlydSwitch *mySwtch = (DbncdDlydSwitch*)argp;  //Parameter casting: the parameter passed by the task is casted to its real type
-
-  for (;;){
-    for(int i{0}; i < DbncdDlydSwitch::getSwitchesCount(); i++){
-       ddSwtchsInstPtrs[i]->updOutputs();
-    //    HILSwtchsInstPtrs[i]->updOutputs();   //This works fine, refreshes the output of all the implemented switches derived from HILSwitches!!
-    }
-    ulTaskNotifyTake(   pdTRUE,          /* Clear the notification value before exiting. */
-                        portMAX_DELAY ); /* Block indefinitely. */
-  }
-}
-
-void stSwtchsTskCallback(void* argp){
-  //StrcsTmrSwitch *mySwtch = (StrcsTmrSwitch*)argp; //Parameter casting: the parameter passed by the task is casted to its real type
-
-  for (;;){
-    for(int i{0}; i < StrcsTmrSwitch::getSwitchesCount(); i++){
-       stSwtchsInstPtrs[i]->updOutputs();
-    }
-    ulTaskNotifyTake(   pdTRUE,          /* Clear the notification value before exiting. */
-                        portMAX_DELAY ); /* Block indefinitely. */
-  }
-}
-
-void htvsSwtchsTskCallback(void *argp){
-  //TmVdblMPBttn *mySwtch = (TmVdblMPBttn*)argp;  //Parameter casting: the parameter passed by the task is casted to its real type
-  for (;;){
-    for(int i{0}; i < HntdTmVdblScrtySwitch::getSwitchesCount(); i++){
-       htvsSwtchsInstPtrs[i]->updOutputs();
-    }
-    ulTaskNotifyTake(   pdTRUE,          /* Clear the notification value before exiting. */
-                        portMAX_DELAY ); /* Block indefinitely. */
-  }
-}
-
 //=========================================================================> Class methods delimiter 
 
 HILSwitches::HILSwitches(){ //This default constructor of this base class will be called first each time the constructor of the subclasses are invoked
-    //<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<  WIP START
-    //Under development, trying to build a general HILSwitches subclasses array of pointers!
-        /*
-        if (!HILSwtchsTskHndl){  //The task has not been created yet, create it through a function that all switch classes must use
+    if (!HILSwtchsTskHndl){  //The task has not been created yet, create it through a function that all switch classes must use
 
-            //Set the task to keep the outputs updated and set the function name to the updater function
-            rc = xTaskCreatePinnedToCore(
-            HILSwtchsTskCallback,  //function to be called
-            "UpdHILSwtchOutputs",  //Name of the task
-            1716,   //Stack size (in bytes in ESP32, words in FreeRTOS), the minimum value is in the config file, for this is 768 bytes
-            &HILSwtchsInstances,  //Pointer to the parameters for the function to work with
-            _exePrty,      //Priority level given to the task
-            &HILSwtchsTskHndl, //Task handle
-            app_cpu //Run in the App Core if it's a dual core mcu (ESP-FreeRTOS specific)
-            );
-            assert(rc == pdPASS);
-            assert(HILSwtchsTskHndl);
-        }
-        */
-    //<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<  WIP END
-
-
+        //Set the task to keep the outputs updated and set the function name to the updater function
+        rc = xTaskCreatePinnedToCore(
+        HILSwtchsTskCallback,  //function to be called
+        "UpdHILSwtchsOutputs",  //Name of the task
+        1716,   //Stack size (in bytes in ESP32, words in FreeRTOS), the minimum value is in the config file, for this is 768 bytes
+        &HILSwtchsInstPtrs,  //Pointer to the parameters for the function to work with
+        // &ddSwtchsInstPtrs,  //Pointer to the parameters for the function to work with
+        _exePrty,      //Priority level given to the task
+        &HILSwtchsTskHndl, //Task handle
+        app_cpu //Run in the App Core if it's a dual core mcu (ESP-FreeRTOS specific)
+        );
+        assert(rc == pdPASS);
+        assert(HILSwtchsTskHndl);
+    }
+    if (HILSwtchsInstPtrs == nullptr){ //First instantantiation of the class, an array will be created
+        HILSwtchsInstPtrs = new HILSwitches* [MAX_SWITCHES_TOTAL];
+    }
 }
 
 HILSwitches::~HILSwitches(){
@@ -109,45 +62,17 @@ DbncdDlydSwitch::DbncdDlydSwitch(DbncdDlydMPBttn &lgcMPB, uint8_t loadPin)
     digitalWrite(_loadPin, LOW);   //Ensure the pin signal is down before setting as output for safety. Usually unneded as all pins are initiated openC, 
     pinMode(_loadPin, OUTPUT);
 
-    if (!ddSwtchTskHndl){  //The task has not been created yet, create it through a function that all switch classes must use
-        //int app_cpu = xPortGetCoreID();
-
-        //Set the task to keep the outputs updated and set the function name to the updater function
-        rc = xTaskCreatePinnedToCore(
-        ddSwtchsTskCallback,  //function to be called
-        "UpdDdSwtchOutputs",  //Name of the task
-        1716,   //Stack size (in bytes in ESP32, words in FreeRTOS), the minimum value is in the config file, for this is 768 bytes
-        &ddSwtchsInstPtrs,  //Pointer to the parameters for the function to work with
-        _exePrty,      //Priority level given to the task
-        &ddSwtchTskHndl, //Task handle
-        app_cpu //Run in the App Core if it's a dual core mcu (ESP-FreeRTOS specific)
-        );
-        assert(rc == pdPASS);
-        assert(ddSwtchTskHndl);
-    }
-    
-    //The dynamic solution preferred over the static array built, both cases presented for testing only, one must be selected:
-    //OPTION 1) Dynamic
-    if (ddSwtchsInstPtrs == nullptr){ //First instantantiation of the class, an array will be created
-        ddSwtchsInstPtrs = new DbncdDlydSwitch* [MAX_SWITCHES_PER_CLASS];
-    }
-    if(ddSwtchCount < MAX_SWITCHES_PER_CLASS){
-        ddSwtchsInstPtrs[ddSwtchCount] = this;
-        ++ddSwtchCount; //Commented while testing both cases
-    }
-
+    //if the ddSwtchTskHndl is still not created the HILSwitches constructor will take care
 
     //Add a pointer to the switch instantiated to the array of pointers to all HILSwitches subclasses created
-    if (HILSwtchsInstPtrs == nullptr){ //First instantantiation of the class, an array will be created
-        HILSwtchsInstPtrs = new HILSwitches* [MAX_SWITCHES_TOTAL];
-    }
     if(totalSwitchesCount < MAX_SWITCHES_TOTAL){
         HILSwtchsInstPtrs[totalSwitchesCount] = this;
         ++totalSwitchesCount;
+        ++ddSwtchCount;
     }
 
     //This implementation of the Switch uses the xTaskToNotify
-    _underlMPB->setTaskToNotify(ddSwtchTskHndl);    //Notify the Underlying DbncdDlydMPButton the taskhandle it'll have to notify is updating the switch outputs
+    _underlMPB->setTaskToNotify(HILSwtchsTskHndl);    //Notify the Underlying DbncdDlydMPButton the taskhandle it'll have to notify is updating the switch outputs
 
     _underlMPB->begin(); //Set the logical underlying mpBttn to start updating it's inputs readings & output states
 }
@@ -196,37 +121,16 @@ StrcsTmrSwitch::StrcsTmrSwitch(HntdTmLtchMPBttn &lgcMPB, uint8_t loadPin, uint8_
         _actvPlt = true;
     }
 
-    if (!stSwtchTskHndl){  //The task has not been created yet, create it through a function that all switch classes must use
-        //int app_cpu = xPortGetCoreID();
-
-        //Set the task to keep the outputs updated and set the function name to the updater function
-        rc = xTaskCreatePinnedToCore(
-        stSwtchsTskCallback,  //function to be called
-        "UpdStSwtchOutputs",  //Name of the task
-        1716,   //Stack size (in bytes in ESP32, words in FreeRTOS), the minimum value is in the config file, for this is 768 bytes, this gives a size of 1.5 KB
-        &stSwtchsInstPtrs,  //Pointer to the parameters for the function to work with
-        _exePrty,      //Priority level given to the task
-        &stSwtchTskHndl, //Task handle
-        app_cpu //Run in the App Core if it's a dual core mcu (ESP-FreeRTOS specific)
-        );
-        assert(rc == pdPASS);
-        assert(stSwtchTskHndl);
-    }
-    
     //Add a pointer to the switch instantiated in the array of pointers of switches whose outputs must be updated
-    if(stSwtchCount < MAX_SWITCHES_PER_CLASS){
-        stSwtchsInstPtrs[stSwtchCount] = this;
-        ++stSwtchCount;
-    }            
-
-    //Add a pointer to the switch instantiated to the array of pointers to all HILSwitches subclasses created
-    if (HILSwtchsInstPtrs == nullptr){ //First instantantiation of the class, an array will be created
-        HILSwtchsInstPtrs = new HILSwitches* [MAX_SWITCHES_TOTAL];
-    }
     if(totalSwitchesCount < MAX_SWITCHES_TOTAL){
         HILSwtchsInstPtrs[totalSwitchesCount] = this;
         ++totalSwitchesCount;
-    }
+        ++stSwtchCount;
+    }            
+
+
+    //This implementation of the Switch uses the xTaskToNotify
+    _underlMPB->setTaskToNotify(HILSwtchsTskHndl);    //Notify the Underlying DbncdDlydMPButton the taskhandle it'll have to notify is updating the switch outputs
 
     _underlMPB->begin(); //Set the logical underlying mpBttn to start updating it's inputs readings & output states
 }
@@ -244,6 +148,7 @@ bool StrcsTmrSwitch::updOutputs(){
     if(_wrnngPin > 0){
         if(_underlMPB->getWrnngOn()){
             if (_wrnngBlnks){   //If the warning output it's configured to blink
+            //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> Change the blinking algorithm to work with the asyncronous xTaskNotifyGive() FreeRTOS macro
                 if (_wrnngLstSwp == 0){ //If warning it's just been activated
                     _blnkOutputOn = true;   //Set (ensure) the warning output starts in ON condition
                     _wrnngLstSwp = xTaskGetTickCount() / portTICK_RATE_MS;  //Register blinking activity start on the stopwatch
@@ -381,37 +286,17 @@ HntdTmVdblScrtySwitch::HntdTmVdblScrtySwitch(TmVdblMPBttn &lgcMPB, uint8_t loadP
         digitalWrite(_disabledPin, LOW);   //Ensure the pin signal is down before setting as output for safety. Usually unneded as all pins are initiated openC, 
         pinMode(_disabledPin, OUTPUT);
     }
-    if (!htvsSwtchTskHndl){  //The task has not been created yet, create it through a function that all switch classes must use
-
-        //Set the task to keep the outputs updated and set the function name to the updater function
-        rc = xTaskCreatePinnedToCore(
-        htvsSwtchsTskCallback,  //function to be called
-        "UpdHtvsSwtchOutputs",  //Name of the task
-        1716,   //Stack size (in bytes in ESP32, words in FreeRTOS), the minimum value is in the config file, for this is 768 bytes, this gives a size of 1.5 KB
-        &htvsSwtchsInstPtrs,  //Pointer to the parameters for the function to work with
-        _exePrty,      //Priority level given to the task
-        &htvsSwtchTskHndl, //Task handle
-        app_cpu //Run in the App Core if it's a dual core mcu (ESP-FreeRTOS specific)
-        );
-        assert(rc == pdPASS);
-        assert(htvsSwtchTskHndl);
-    }
     
     //Add a pointer to the switch instantiated to the array of pointers of switches whose outputs must be updated
-    if(htvsSwtchCount < MAX_SWITCHES_PER_CLASS){
-        htvsSwtchsInstPtrs[htvsSwtchCount] = this;
-        ++htvsSwtchCount;
-    }            
-
-    //Add a pointer to the switch instantiated to the array of pointers to all HILSwitches subclasses created
-    if (HILSwtchsInstPtrs == nullptr){ //First instantantiation of the class, an array will be created
-        HILSwtchsInstPtrs = new HILSwitches* [MAX_SWITCHES_TOTAL];
-    }
     if(totalSwitchesCount < MAX_SWITCHES_TOTAL){
         HILSwtchsInstPtrs[totalSwitchesCount] = this;
         ++totalSwitchesCount;
+        ++htvsSwtchCount;
     }
-    
+
+    //This implementation of the Switch uses the xTaskToNotify
+    _underlMPB->setTaskToNotify(HILSwtchsTskHndl);    //Notify the Underlying DbncdDlydMPButton the taskhandle it'll have to notify is updating the switch outputs
+
     _underlMPB->begin(); //Set the logical underlying mpBttn to start updating it's inputs readings & output states
 
 }
