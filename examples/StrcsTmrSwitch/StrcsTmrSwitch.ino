@@ -33,7 +33,7 @@ void setup() {
   //Change some of the HntdTmLtchMPBttn attributes to show how simple it is
   myStairSwitch.getUnderlMPB()->setKeepPilot(true);
   myStairSwitch.getUnderlMPB()->setActTime(6000);
-  myStairSwitch.setBlnkRate(300);
+  myStairSwitch.setBlnkRate(150);
   myStairSwitch.setBlnkWrnng(true);
 }
 

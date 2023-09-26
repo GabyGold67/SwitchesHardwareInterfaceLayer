@@ -4,8 +4,7 @@
 #include <Arduino.h>
 #include <mpbToSwitch.h>
 
-#define MAX_SWITCHES_PER_CLASS 5
-#define MAX_SWITCHES_TOTAL 20
+#define MAX_TOTAL_SWITCHES 20
 #define MIN_BLINK_RATE 100
 
 //Function prototypes
@@ -16,7 +15,7 @@ static const int app_cpu = xPortGetCoreID();
 static BaseType_t rc;
 
 //Classes definitions
-class HILSwitches{  //Virtual superclass (Base Class) for all the switches subclases
+class HILSwitches{  //Virtual Base Class for all the switches subclases
 protected:
   uint8_t _loadPin{};
   static uint8_t totalSwitchesCount;
@@ -29,7 +28,7 @@ public:
 };
 
 //=============================================================>
-
+//Tested OK
 class DbncdDlydSwitch: public HILSwitches{
 protected:
   DbncdDlydMPBttn* _underlMPB;
@@ -54,40 +53,36 @@ public:
   virtual bool updOutputs();
   TmVdblMPBttn* getUnderlMPB();
   static uint8_t getSwitchesCount();
-
 };
 
 //=============================================================>
-
+//Tested OK
+//Pending: _ MuTex protection of _blnkOutputOn
 class StrcsTmrSwitch: public HILSwitches{
-  //static TaskHandle_t stSwtchTskHndl;  //TaskHandle to the updating task that keeps this class objects outputs updated
 protected:
   HntdTmLtchMPBttn* _underlMPB;
   uint8_t _loadPin{};
   uint8_t _wrnngPin{};
   uint8_t _pltPin{};
-
-  bool _actvWrnng{false};
-  bool _actvPlt {false};
+  TimerHandle_t _stsBlnkTmrHndl {nullptr};
+  
   bool _wrnngBlnks{false};
   unsigned long int _wrnngBlnkRate{250};
-  unsigned long int _wrnngLstSwp{0};
-  bool _blnkOutputOn{true};
+  // unsigned long int _wrnngLstSwp{0};
+  volatile bool _blnkOutputOn{true};
   static uint8_t stSwtchCount;
 public:
   StrcsTmrSwitch(HntdTmLtchMPBttn &lgcMPB, uint8_t loadPin,uint8_t wnngPin = 0, uint8_t pltPin = 0);
-  virtual bool updOutputs();
-  bool setActvPilot(bool actvPilot);
-  bool setActvWarning(bool actvWarning);
-  const bool getActvPilot() const;
-  const bool getActvWarning() const;
-  HntdTmLtchMPBttn* getUnderlMPB();
-  bool setBlnkWrnng(bool newBlnkSett);
-  bool setBlnkRate(unsigned long int newBlnkRate);
   bool blinkWrnng();
+  const bool getBlnkOutputOn() const;
+  HntdTmLtchMPBttn* getUnderlMPB();
   bool noBlinkWrnng();    
+  bool setBlnkOutputOn(const bool &newBlnkOutputOn);
+  bool setBlnkRate(unsigned long int newBlnkRate);
+  bool setBlnkWrnng(bool newBlnkSett);
+  static void toggleBlnkOutputOn(TimerHandle_t blnkTmrArg);
+  virtual bool updOutputs();
   static uint8_t getSwitchesCount();
-
 };
 
 //=============================================================>
@@ -101,19 +96,18 @@ protected:
   uint8_t _disabledPin{};
   
   const unsigned long int _minVoidTime{1000};
-  bool _enabled{true};
   bool _onIfDisabled{false};
   static uint8_t htvsSwtchCount;
 public:
   HntdTmVdblScrtySwitch(TmVdblMPBttn &lgcMPB, uint8_t loadPin, uint8_t voidedPin = 0, uint8_t disabledPin = 0);
-  virtual bool updOutputs();
+  bool enable();
+  bool disable();
+  const bool getEnabled() const;
   bool setEnabled(bool newEnable);
   bool updIsEnabled(const bool &enabledValue);
   bool updIsOn(const bool &onValue);
   bool updIsVoided(const bool &voidValue);
-  bool setOnIfDisabled(bool newIsOn);
-  bool enable();
-  bool disable();
+  virtual bool updOutputs();
   static uint8_t getSwitchesCount();
 };
 

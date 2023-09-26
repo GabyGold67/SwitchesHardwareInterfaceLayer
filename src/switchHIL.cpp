@@ -41,7 +41,7 @@ HILSwitches::HILSwitches(){ //This default constructor of this base class will b
         assert(HILSwtchsTskHndl);
     }
     if (HILSwtchsInstPtrs == nullptr){ //First instantantiation of the class, an array will be created
-        HILSwtchsInstPtrs = new HILSwitches* [MAX_SWITCHES_TOTAL];
+        HILSwtchsInstPtrs = new HILSwitches* [MAX_TOTAL_SWITCHES];
     }
 }
 
@@ -65,14 +65,14 @@ DbncdDlydSwitch::DbncdDlydSwitch(DbncdDlydMPBttn &lgcMPB, uint8_t loadPin)
     //if the ddSwtchTskHndl is still not created the HILSwitches constructor will take care
 
     //Add a pointer to the switch instantiated to the array of pointers to all HILSwitches subclasses created
-    if(totalSwitchesCount < MAX_SWITCHES_TOTAL){
+    if(totalSwitchesCount < MAX_TOTAL_SWITCHES){
         HILSwtchsInstPtrs[totalSwitchesCount] = this;
         ++totalSwitchesCount;
         ++ddSwtchCount;
     }
 
     //This implementation of the Switch uses the xTaskToNotify
-    _underlMPB->setTaskToNotify(HILSwtchsTskHndl);    //Notify the Underlying DbncdDlydMPButton the taskhandle it'll have to notify is updating the switch outputs
+    _underlMPB->setTaskToNotify(HILSwtchsTskHndl);    //Notify the Underlying DbncdDlydMPButton the taskhandle it'll have to notify for updating the switch outputs
 
     _underlMPB->begin(); //Set the logical underlying mpBttn to start updating it's inputs readings & output states
 }
@@ -106,31 +106,28 @@ StrcsTmrSwitch::StrcsTmrSwitch(HntdTmLtchMPBttn &lgcMPB, uint8_t loadPin, uint8_
 :_underlMPB{&lgcMPB}, _loadPin {loadPin}, _wrnngPin{wnngPin}, _pltPin{pltPin}
 {     
     //Set the output pins to the required states
-    digitalWrite(_loadPin, LOW);   //Ensure the pin signal is down before setting as output for safety. Usually unneded as all pins are initiated openC, 
+    digitalWrite(_loadPin, LOW);   //Ensure the pin signal is down before setting as output for safety. Usually unneded as all pins are initiated input openC, 
     pinMode(_loadPin, OUTPUT);
 
     if (_wrnngPin > 0){
-        digitalWrite(_wrnngPin, LOW);   //Ensure the pin signal is down before setting as output for safety. Usually unneded as all pins are initiated openC, 
+        digitalWrite(_wrnngPin, LOW);   //Ensure the pin signal is down before setting as output for safety. Usually unneded as all pins are initiated input openC, 
         pinMode(_wrnngPin, OUTPUT);
-        _actvWrnng = true;
     }
 
     if (_pltPin > 0){
         digitalWrite(_pltPin, LOW);   //Ensure the pin signal is down before setting as output for safety. Usually unneded as all pins are initiated openC, 
         pinMode(_pltPin, OUTPUT);
-        _actvPlt = true;
     }
 
     //Add a pointer to the switch instantiated in the array of pointers of switches whose outputs must be updated
-    if(totalSwitchesCount < MAX_SWITCHES_TOTAL){
+    if(totalSwitchesCount < MAX_TOTAL_SWITCHES){
         HILSwtchsInstPtrs[totalSwitchesCount] = this;
         ++totalSwitchesCount;
         ++stSwtchCount;
     }            
 
-
     //This implementation of the Switch uses the xTaskToNotify
-    _underlMPB->setTaskToNotify(HILSwtchsTskHndl);    //Notify the Underlying DbncdDlydMPButton the taskhandle it'll have to notify is updating the switch outputs
+    _underlMPB->setTaskToNotify(HILSwtchsTskHndl);    //Notify the Underlying DbncdDlydMPButton the taskhandle it'll have to notify for updating the switch outputs
 
     _underlMPB->begin(); //Set the logical underlying mpBttn to start updating it's inputs readings & output states
 }
@@ -146,38 +143,36 @@ bool StrcsTmrSwitch::updOutputs(){
     }
     
     if(_wrnngPin > 0){
-        if(_underlMPB->getWrnngOn()){
-            if (_wrnngBlnks){   //If the warning output it's configured to blink
-            //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> Change the blinking algorithm to work with the asyncronous xTaskNotifyGive() FreeRTOS macro
-                if (_wrnngLstSwp == 0){ //If warning it's just been activated
-                    _blnkOutputOn = true;   //Set (ensure) the warning output starts in ON condition
-                    _wrnngLstSwp = xTaskGetTickCount() / portTICK_RATE_MS;  //Register blinking activity start on the stopwatch
-                }
-                else{   // not just activated
-                    if (((xTaskGetTickCount() / portTICK_RATE_MS) - _wrnngLstSwp) >= _wrnngBlnkRate){   //Verify stopwatch time to change condition?
-                        _blnkOutputOn = !_blnkOutputOn;     //Yes, swap _blnkOutputOn value
-                        _wrnngLstSwp = xTaskGetTickCount() / portTICK_RATE_MS;  //Register time of last swap
-                    }
+        if(_underlMPB->getWrnngOn()){   //The underlying mpb has the Warning flag activated
+            if (_wrnngBlnks){   //If the warning output is configured to blink            
+                if( !xTimerIsTimerActive(_stsBlnkTmrHndl)){
+                    // the blinking timer is not active, activate it to provide blinking service.                    
+                    if(!_blnkOutputOn)  //**************************************************>> _blnkOutputOn is a shared resourse //Set protective MuTex
+                        _blnkOutputOn = true;   //the blinking always starts setting the warning on and then turning it off if there's enough time!
+                    xTimerStart(_stsBlnkTmrHndl, portMAX_DELAY);
                 }
             }
-
-            if((_wrnngBlnks == false) || (_wrnngBlnks && _blnkOutputOn)){
+            else{   //The warning output is configured to stay still (no blinking)
+                if(xTimerIsTimerActive(_stsBlnkTmrHndl)){   
+                    xTimerStop(_stsBlnkTmrHndl, portMAX_DELAY); //The blinking timer is running, so we'll stop it
+                    
+                    if(!_blnkOutputOn)  //**************************************************>> _blnkOutputOn is a shared resourse, //Set protective MuTex
+                        _blnkOutputOn = true;   //the blinking always ends setting the warning on for the next blinking loop.
+                }
+            }                        
+            // set the pin high/low deppending on _blnkOutputOn state
+            if(!_wrnngBlnks || (_wrnngBlnks && _blnkOutputOn)){ //The output pin must be HIGH
                 if(digitalRead(_wrnngPin) != HIGH)
                     digitalWrite(_wrnngPin, HIGH);
-                else if(digitalRead(_wrnngPin) != LOW)
+            }
+            else{
+                if(digitalRead(_wrnngPin) != LOW)
                     digitalWrite(_wrnngPin, LOW);
             }
-                        
         }
-        else{
+        else{   //The underlying mpb has the Warning flag deactivated
             if(digitalRead(_wrnngPin) != LOW)
                 digitalWrite(_wrnngPin, LOW);
-            if(_wrnngLstSwp > 0){   //Safe method to check if blinking was used, as the _wrnngBlnks flag might be changed while a blinking was taking place
-                //Ensure blinking stopwatch reset for next use
-                _wrnngLstSwp = 0;
-                //Ensure the blinking output on is true for next use
-                _blnkOutputOn = true;
-            }
         }
     }
 
@@ -195,49 +190,33 @@ bool StrcsTmrSwitch::updOutputs(){
     return true;
 }
 
-bool StrcsTmrSwitch::setActvPilot(bool actvPilot){
-    bool result {true};
-
-    if(_pltPin > 0){
-        if(actvPilot != _actvPlt)
-            _actvPlt = actvPilot;
-    }
-    else
-        result = false;
-    
-    return result;
-}
-
-bool StrcsTmrSwitch::setActvWarning(bool actvWarning){
-    bool result {true};
-
-    if(_wrnngPin > 0){
-        if(actvWarning != _actvWrnng)
-            _actvPlt = actvWarning;
-    }    
-    else
-        result = false;
-    
-    return result;
-}
-
-const bool StrcsTmrSwitch::getActvPilot() const{
-
-    return _actvPlt;
-}
-
-const bool StrcsTmrSwitch::getActvWarning() const{
-
-    return _actvWrnng;
-}
-
 HntdTmLtchMPBttn* StrcsTmrSwitch::getUnderlMPB(){
+
     return _underlMPB;
 }
 
-bool StrcsTmrSwitch::setBlnkWrnng(bool newBlnkSett){
-    if(newBlnkSett != _wrnngBlnks)
-        _wrnngBlnks = newBlnkSett;
+bool StrcsTmrSwitch::setBlnkWrnng(bool newBlnkSett){    
+    if(_wrnngPin > 0){  //There's a pin asigned for some warning hardware
+        if(newBlnkSett != _wrnngBlnks){ //There's a real change in the _brnngBlnks value
+            _wrnngBlnks = newBlnkSett;
+            if(_wrnngBlnks == true){  //Create the warning timer to the current blinkRate
+                if (!_stsBlnkTmrHndl){        
+                    _stsBlnkTmrHndl = xTimerCreate(
+                        "WarningBlink",  //Timer name
+                        pdMS_TO_TICKS(_wrnngBlnkRate),  //Timer period in ticks
+                        pdTRUE,     //Autoreload true
+                        this,       //TimerID: data passed to the callback funtion to work
+                        StrcsTmrSwitch::toggleBlnkOutputOn);
+                    assert (_stsBlnkTmrHndl);
+                } 
+            }
+            else{       //If there is a timer handle: delete the timer and null the handle
+
+                xTimerDelete(_stsBlnkTmrHndl, portMAX_DELAY);
+                _stsBlnkTmrHndl = nullptr;
+            }
+        }
+    }
 
     return _wrnngBlnks;
 }
@@ -247,10 +226,34 @@ bool StrcsTmrSwitch::setBlnkRate(unsigned long int newBlnkRate){
     
     if(newBlnkRate >= MIN_BLINK_RATE)
         _wrnngBlnkRate = newBlnkRate;
-    else
-        result = false;
+        result = true;
+        if (_stsBlnkTmrHndl){        
+            //If the timer is already running modify the Timer period
+            if(!xTimerChangePeriod( _stsBlnkTmrHndl, _wrnngBlnkRate / portTICK_PERIOD_MS, 100 ) == pdPASS)
+                result = false;
+        }
 
     return result;
+}
+
+void StrcsTmrSwitch::toggleBlnkOutputOn(TimerHandle_t blnkTmrArg){
+    StrcsTmrSwitch *swtchObj = (StrcsTmrSwitch*)pvTimerGetTimerID(blnkTmrArg);
+    swtchObj->setBlnkOutputOn(!(swtchObj->getBlnkOutputOn()));  
+
+    return;
+  }
+
+const bool StrcsTmrSwitch::getBlnkOutputOn() const{
+
+    return _blnkOutputOn;   
+}
+
+bool StrcsTmrSwitch::setBlnkOutputOn(const bool &newBlnkOutputOn){
+    if(_blnkOutputOn != newBlnkOutputOn){
+        _blnkOutputOn = newBlnkOutputOn;    //Set protective MuTex
+    }
+
+    return _blnkOutputOn;
 }
 
 bool StrcsTmrSwitch::blinkWrnng(){
@@ -274,21 +277,21 @@ HntdTmVdblScrtySwitch::HntdTmVdblScrtySwitch(TmVdblMPBttn &lgcMPB, uint8_t loadP
 :_underlMPB{&lgcMPB}, _loadPin{loadPin}, _voidedPin{voidedPin}, _disabledPin{disabledPin}
 {
     //Set the output pins to the required states
-    digitalWrite(_loadPin, LOW);   //Ensure the pin signal is down before setting as output for safety. Usually unneded as all pins are initiated openC, 
+    digitalWrite(_loadPin, LOW);   //Ensure the pin signal is down before setting as output for safety. Usually unneded as all pins are initiated Input OpenC
     pinMode(_loadPin, OUTPUT);
 
     if (_voidedPin > 0){
-        digitalWrite(_voidedPin, LOW);   //Ensure the pin signal is down before setting as output for safety. Usually unneded as all pins are initiated openC, 
+        digitalWrite(_voidedPin, LOW);   //Ensure the pin signal is down before setting as output for safety. Usually unneded as all pins are initiated Input OpenC
         pinMode(_voidedPin, OUTPUT);
     }
 
     if (_disabledPin > 0){
-        digitalWrite(_disabledPin, LOW);   //Ensure the pin signal is down before setting as output for safety. Usually unneded as all pins are initiated openC, 
+        digitalWrite(_disabledPin, LOW);   //Ensure the pin signal is down before setting as output for safety. Usually unneded as all pins are initiated Input OpenC
         pinMode(_disabledPin, OUTPUT);
     }
     
-    //Add a pointer to the switch instantiated to the array of pointers of switches whose outputs must be updated
-    if(totalSwitchesCount < MAX_SWITCHES_TOTAL){
+    //Add a pointer to the switch instantiated to the array of pointers of switches which outputs must be updated
+    if(totalSwitchesCount < MAX_TOTAL_SWITCHES){
         HILSwtchsInstPtrs[totalSwitchesCount] = this;
         ++totalSwitchesCount;
         ++htvsSwtchCount;
@@ -303,13 +306,13 @@ HntdTmVdblScrtySwitch::HntdTmVdblScrtySwitch(TmVdblMPBttn &lgcMPB, uint8_t loadP
 
 bool HntdTmVdblScrtySwitch::updOutputs(){
     
-    if(!_enabled){ // The switch is DISABLED, handle the outputs accordingly
+    if(!_underlMPB->getIsEnabled()){ // The switch is DISABLED, handle the outputs accordingly
         // Set disabledPin ON
         updIsEnabled(false);
         //If the switch is disabled there should be no voided indication
         updIsVoided(false);
         // if the switch should stay on when disabled
-        updIsOn(_onIfDisabled);
+        updIsOn(_underlMPB->getIsOnDisabled());
         // if(_onIfDisabled){      
         //     updIsOn(true);  // LoadPin is forced ON
         // }
@@ -331,11 +334,16 @@ bool HntdTmVdblScrtySwitch::updOutputs(){
 }
 
 bool HntdTmVdblScrtySwitch::setEnabled(bool newEnabled){
-    if (_enabled != newEnabled){
-        _enabled = newEnabled;
+    if (_underlMPB->getIsEnabled() != newEnabled){
+        _underlMPB->setIsEnabled(newEnabled);
     }
 
-    return _enabled;
+    return newEnabled;
+}
+
+const bool HntdTmVdblScrtySwitch::getEnabled() const{
+
+    return _underlMPB->getIsEnabled();
 }
 
 uint8_t HntdTmVdblScrtySwitch::getSwitchesCount(){
@@ -369,13 +377,6 @@ bool HntdTmVdblScrtySwitch::updIsVoided(const bool &voidValue){
     }
     
     return voidValue;
-}
-
-bool HntdTmVdblScrtySwitch::setOnIfDisabled(bool newIsOn){
-    if (_onIfDisabled != newIsOn)
-        _onIfDisabled = newIsOn;
-
-    return _onIfDisabled;
 }
 
 bool HntdTmVdblScrtySwitch::enable(){
