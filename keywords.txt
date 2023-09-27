@@ -8,11 +8,43 @@
 
 HILSwitches KEYWORD1
 DbncdDlydSwitch KEYWORD1
+TmVdblSwitch   KEYWORD1
 StrcsTmrSwitch    KEYWORD1
+HntdTmVdblScrtySwitch   KEYWORD1
+GrddSwitch  KEYWORD1
 
 ###############################################
 # Methods and Functions (KEYWORD2)
 ###############################################
-# DbncdDlydSwitch
+# HILSwitches
 #############
 updOutputs   KEYWORD2
+getSwitchesCount  KEYWORD2
+#################
+# DbncdDlydSwitch
+#################
+getUnderlMPB   KEYWORD2
+################
+# StrcsTmrSwitch
+################
+blinkWrnng  KEYWORD2
+getBlnkOutputOn   KEYWORD2
+noBlinkWrnng   KEYWORD2
+setBlnkOutputOn   KEYWORD2
+setBlnkRate KEYWORD2
+setBlnkWrnng   KEYWORD2
+toggleBlnkOutputOn   KEYWORD2
+#######################
+# HntdTmVdblScrtySwitch
+#######################
+enable   KEYWORD2
+disable  KEYWORD2
+getEnabled  KEYWORD2
+setEnabled  KEYWORD2
+updIsEnabled   KEYWORD2
+updIsOn  KEYWORD2
+updIsVoided KEYWORD2
+############
+# GrddSwitch
+############
+getUnderlGuard KEYWORD2

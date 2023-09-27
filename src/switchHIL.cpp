@@ -9,6 +9,7 @@ HILSwitches** HILSwtchsInstPtrs{nullptr};   // pointer to a array of pointers th
 uint8_t DbncdDlydSwitch::ddSwtchCount = 0;
 uint8_t StrcsTmrSwitch::stSwtchCount = 0;
 uint8_t HntdTmVdblScrtySwitch::htvsSwtchCount = 0;
+uint8_t GrddSwitch::gSwtchCount = 0;
 
 void HILSwtchsTskCallback(void *argp){
   //TmVdblMPBttn *mySwtch = (TmVdblMPBttn*)argp;  //Parameter casting: the parameter passed by the task is casted to its real type
@@ -391,26 +392,70 @@ bool HntdTmVdblScrtySwitch::disable(){
 
 //=========================================================================> Class methods delimiter
 
-GuardedSwitch::GuardedSwitch(DbncdDlydMPBttn* underlMPB, DbncdDlydMPBttn* underlGuard, uint8_t loadPin)
+GrddSwitch::GrddSwitch(DbncdDlydMPBttn &underlMPB, DbncdDlydMPBttn &underlGuard, uint8_t loadPin, uint8_t guardRlsdPin)
+:_underlMPB{&underlMPB}, _underlGuard{&underlGuard}, _loadPin{loadPin}, _guardRlsdPin{guardRlsdPin}
 {
+    //Set the output pins to the required states
+    digitalWrite(_loadPin, LOW);   //Ensure the pin signal is down before setting as output for safety. Usually unneded as all pins are initiated Input OpenC
+    pinMode(_loadPin, OUTPUT);
+
+    if(_guardRlsdPin > 0){
+        digitalWrite(_guardRlsdPin, LOW);   //Ensure the pin signal is down before setting as output for safety. Usually unneded as all pins are initiated Input OpenC
+        pinMode(_guardRlsdPin, OUTPUT);
+    }
+    //Add a pointer to the switch instantiated to the array of pointers of switches which outputs must be updated
+    if(totalSwitchesCount < MAX_TOTAL_SWITCHES){
+        HILSwtchsInstPtrs[totalSwitchesCount] = this;
+        ++totalSwitchesCount;
+        ++gSwtchCount;
+    }
+    //This implementation of the Switch uses the xTaskToNotify
+
+    _underlGuard->setTaskToNotify(HILSwtchsTskHndl);    //Notify the Underlying DbncdDlydMPButton the taskhandle it'll have to notify is updating the switch outputs
+    _underlMPB->setTaskToNotify(HILSwtchsTskHndl);    //Notify the Underlying DbncdDlydMPButton the taskhandle it'll have to notify is updating the switch outputs
+    _underlGuard->begin(); //Set the logical underlying mpBttn to start updating it's inputs readings & output states
+    _underlMPB->begin(); //Set the logical underlying mpBttn to start updating it's inputs readings & output states
+        
 }
 
-bool GuardedSwitch::updOutputs(){
+bool GrddSwitch::updOutputs(){
+    if(_underlGuard->getIsOn()){
+        if(_guardRlsdPin > 0){
+            if(digitalRead(_guardRlsdPin) != HIGH)
+                digitalWrite(_guardRlsdPin, HIGH);   //Ensure the pin signal is down before setting as output for safety. Usually unneded as all pins are initiated Input OpenC
+        }
+        if(_underlMPB->getIsOn()){
+            if(digitalRead(_loadPin) != HIGH)
+                digitalWrite(_loadPin, HIGH);
+        }
+        else{
+            if(digitalRead(_loadPin) != LOW)
+                digitalWrite(_loadPin, LOW);
+        }
+    }
+    else{
+        if(_guardRlsdPin > 0){
+            if(digitalRead(_guardRlsdPin) != LOW)
+                digitalWrite(_guardRlsdPin, LOW);   //Ensure the pin signal is down before setting as output for safety. Usually unneded as all pins are initiated Input OpenC
+        }
+        if(digitalRead(_loadPin) != LOW)
+            digitalWrite(_loadPin, LOW);
+    }
 
-    return false;
+    return true;
 }
 
-DbncdDlydMPBttn *GuardedSwitch::getUnderlMPB(){
+DbncdDlydMPBttn *GrddSwitch::getUnderlMPB(){
 
-    return nullptr;
+    return _underlMPB;
 }
 
-uint8_t GuardedSwitch::getSwitchesCount(){
+uint8_t GrddSwitch::getSwitchesCount(){
     
     return gSwtchCount;
 }
 
-DbncdDlydMPBttn *GuardedSwitch::getUnderlGuard(){
+DbncdDlydMPBttn *GrddSwitch::getUnderlGuard(){
     
-    return nullptr;
+    return _underlGuard;
 }

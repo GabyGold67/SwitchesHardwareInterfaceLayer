@@ -28,7 +28,7 @@ public:
 };
 
 //=============================================================>
-//Tested OK
+
 class DbncdDlydSwitch: public HILSwitches{
 protected:
   DbncdDlydMPBttn* _underlMPB;
@@ -56,8 +56,7 @@ public:
 };
 
 //=============================================================>
-//Tested OK
-//Pending: _ MuTex protection of _blnkOutputOn
+
 class StrcsTmrSwitch: public HILSwitches{
 protected:
   HntdTmLtchMPBttn* _underlMPB;
@@ -113,19 +112,20 @@ public:
 
 //=============================================================>
 
-class GuardedSwitch: public HILSwitches{
+class GrddSwitch: public HILSwitches{
   static TaskHandle_t grddSwtchTskHndl;
 protected:
-  DbncdDlydMPBttn* _underlGuard;
   DbncdDlydMPBttn* _underlMPB;
+  DbncdDlydMPBttn* _underlGuard;
   uint8_t _loadPin{};
   uint8_t _guardPin{};
+  uint8_t _guardRlsdPin{};
   static uint8_t gSwtchCount;
 public:
-  GuardedSwitch(DbncdDlydMPBttn* underlMPB, DbncdDlydMPBttn* underlGuard, uint8_t loadPin);
-  virtual bool updOutputs();
-  DbncdDlydMPBttn* getUnderlMPB();
+  GrddSwitch(DbncdDlydMPBttn &underlMPB, DbncdDlydMPBttn &underlGuard, uint8_t loadPin, uint8_t guardRlsdPin = 0);
   DbncdDlydMPBttn* getUnderlGuard();
+  DbncdDlydMPBttn* getUnderlMPB();
+  virtual bool updOutputs();
   static uint8_t getSwitchesCount();
 };
 
