@@ -15,7 +15,7 @@ static const int app_cpu = xPortGetCoreID();
 static BaseType_t rc;
 
 //Classes definitions
-class HILSwitches{  //Virtual Base Class for all the switches subclases
+class HILSwitches{  // Virtual Base Class for all the switches subclases
 protected:
   uint8_t _loadPin{};
   static uint8_t totalSwitchesCount;

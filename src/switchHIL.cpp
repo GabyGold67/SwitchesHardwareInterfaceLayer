@@ -29,14 +29,14 @@ HILSwitches::HILSwitches(){ //This default constructor of this base class will b
 
         //Set the task to keep the outputs updated and set the function name to the updater function
         rc = xTaskCreatePinnedToCore(
-        HILSwtchsTskCallback,  //function to be called
-        "UpdHILSwtchsOutputs",  //Name of the task
-        1716,   //Stack size (in bytes in ESP32, words in FreeRTOS), the minimum value is in the config file, for this is 768 bytes
-        &HILSwtchsInstPtrs,  //Pointer to the parameters for the function to work with
-        // &ddSwtchsInstPtrs,  //Pointer to the parameters for the function to work with
-        _exePrty,      //Priority level given to the task
-        &HILSwtchsTskHndl, //Task handle
-        app_cpu //Run in the App Core if it's a dual core mcu (ESP-FreeRTOS specific)
+            HILSwtchsTskCallback,  //function to be called
+            "UpdHILSwtchsOutputs",  //Name of the task
+            1716,   //Stack size (in bytes in ESP32, words in FreeRTOS), the minimum value is in the config file, for this is 768 bytes
+            &HILSwtchsInstPtrs,  //Pointer to the parameters for the function to work with
+            // &ddSwtchsInstPtrs,  //Pointer to the parameters for the function to work with
+            _exePrty,      //Priority level given to the task
+            &HILSwtchsTskHndl, //Task handle
+            app_cpu //Run in the App Core if it's a dual core mcu (ESP-FreeRTOS specific)
         );
         assert(rc == pdPASS);
         assert(HILSwtchsTskHndl);
@@ -47,6 +47,11 @@ HILSwitches::HILSwitches(){ //This default constructor of this base class will b
 }
 
 HILSwitches::~HILSwitches(){
+    // Decrement switches total count
+    // Check for switches instantiated (from the switches count and/or traversing the pointers aray)
+    // If counter == 0 and/or pointers array empty
+        // delete [] HILSwtchsInstPtrs
+        // HILSwtchsInstPtrs = nullptr
 }
 
 uint8_t HILSwitches::getSwitchesCount(){
