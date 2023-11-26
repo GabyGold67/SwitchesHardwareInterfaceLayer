@@ -1,5 +1,5 @@
 # **Switches Hardware Interface Layer** Library (switchHIL)
-## An Arduino-ESP32 RTOS library that builds physical electric switches outputs using the mpbToSwitch library for logic simulated mechanisms.  
+## An Arduino-ESP32 RTOS library that builds physical electric switches outputs using the mpbToSwitch library (https://github.com/GabyGold67/MomentaryPushButtonsAsSwitches) for logic simulated mechanisms.  
 
 The general implementation working path is:  
 _ Instantiate the required mpbToSwitch class with all the required attributes for it's use, this will be the **underlying momentary push button**.  
